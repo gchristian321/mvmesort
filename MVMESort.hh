@@ -6,15 +6,21 @@
 
 typedef std::map<UInt_t, std::vector<double>*> BrMap;
 
+struct ChannelInfo {
+  std::string fDetectorName;
+  UInt_t fDetectorChannel;
+  std::array<double, 3> fCalibration;  
+};
+
 class ChannelMap {
 public:
   ChannelMap(const std::string& filename);
-  std::pair<std::string, UInt_t> GetDetectorAndChannel(const std::string& moduleName, UInt_t moduleCh);
+  ChannelInfo GetChannelInfo(const std::string& moduleName, UInt_t moduleCh);
   void Print() const;
   void SetWarn(bool warn) { fWarn = warn; }
 private:
   bool fWarn;
-  std::map<std::string, std::map<UInt_t, std::pair<std::string, UInt_t> > > m_;
+  std::map<std::string, std::map<UInt_t, ChannelInfo> > m_;
 };
 
 struct Detector {
@@ -56,8 +62,8 @@ private:
   }
   
 private:
-  std::map<std::string, Detector> fBrMap;
-
+  std::map<std::string, Detector> fBrMap; // holds raw data
+  
 private:
   ChannelMap fChannelMap;
   TFile fFile;

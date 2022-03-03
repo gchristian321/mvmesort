@@ -19,17 +19,30 @@ ChannelMap::ChannelMap(const string& filename):
 	ltok.push_back ( string(static_cast<TObjString*>(tok->At(i))->GetString().Data()) );
       }
     }
-    if(ltok.size() == 4 && ltok[0] != "" && ltok[1] != "" && ltok[2] != "" && ltok[3] != "") {
+    bool isgood = ltok.size() == 7;
+    if(isgood) {
+      for(int i=0; i< 7; ++i) {
+	if(ltok[i] == "") { isgood = false; }
+      }
+    }
+    if(isgood) {
       // module name, module ch, detector name, detector ch
       UInt_t moduleCh = atoi(ltok[1].c_str()), detCh = atoi(ltok[3].c_str());
       string moduleName = ltok[0], detName = ltok[2];
 
-      auto emp = m_[moduleName].emplace(moduleCh, make_pair(detName, detCh));
+      ChannelInfo chInfo;
+      chInfo.fDetectorName = detName;
+      chInfo.fDetectorChannel = detCh;
+      for(int i=0; i< 3; ++i) {
+	chInfo.fCalibration[i] = atof(ltok.at(i+4).c_str());
+      }
+      
+      auto emp = m_[moduleName].emplace(moduleCh, chInfo);
       if(!emp.second) {
 	cerr << "WARNING: duplicate channel in mapping for (module, channel): " <<
 	  moduleName << ", " << moduleCh  << "\n";
-	cerr << "  Previous ---> (detector name, channel): " << emp.first->second.first
-	     << ", " <<  emp.first->second.second << endl;
+	cerr << "  Previous ---> (detector name, channel): " << emp.first->second.fDetectorName
+	     << ", " <<  emp.first->second.fDetectorChannel << endl;
 	cerr << "  This -------> (detector name, channel): " << detName << ", " << detCh << endl;
 	cerr << "Keeping previous entry ONLY\n";
       }
@@ -40,8 +53,7 @@ ChannelMap::ChannelMap(const string& filename):
   }
 }
 
-std::pair<std::string, UInt_t>
-ChannelMap::GetDetectorAndChannel(const std::string& moduleName, UInt_t moduleCh)
+ChannelInfo ChannelMap::GetChannelInfo(const std::string& moduleName, UInt_t moduleCh)
 {
   auto it = m_.find(moduleName);
   if (it != m_.end()) {
@@ -57,7 +69,10 @@ ChannelMap::GetDetectorAndChannel(const std::string& moduleName, UInt_t moduleCh
   else if (fWarn) {
     cerr << "Can't find channel map for module " << moduleName << endl;
   }
-  return make_pair<string, UInt_t>("ERROR", 0xffffffff);
+  ChannelInfo ch;
+  ch.fDetectorName = "ERROR";
+  ch.fDetectorChannel = 0xffffffff;
+  return ch;
 }
 
 void ChannelMap::Print() const
@@ -66,7 +81,7 @@ void ChannelMap::Print() const
     cout << "Module: " << it.first << "\n";
     for (const auto& it1 : it.second) {
       cout << "\tChannel >>detName, detCh: " << it1.first << " >>" <<
-	it1.second.first << ", " << it1.second.second << "\n";
+	it1.second.fDetectorName << ", " << it1.second.fDetectorChannel << "\n";
     }
   }
 }
@@ -178,17 +193,23 @@ void MVMESort::AddData(UInt_t moduleCh,
 		       const string& storage_name,
 		       double value)
 {
-  auto ch = fChannelMap.GetDetectorAndChannel(module_name, moduleCh);
-  if(ch.first == "ERROR") { return; }
+  auto chInfo = fChannelMap.GetChannelInfo(module_name, moduleCh);
+  if(chInfo.fDetectorName == "ERROR") { return; }
 
-  const string det_name = ch.first;
-  const UInt_t det_ch = ch.second;
+  const string det_name = chInfo.fDetectorName;
+  const UInt_t det_ch = chInfo.fDetectorChannel;
   auto it = fBrMap.find(det_name);
   if(it == fBrMap.end()) {
     cerr << "ERROR: coundn't find branch for detector \"" << det_name << "\"\n";
     return;
   }
 
+  // calibration
+  double cal_value =
+    chInfo.fCalibration[2] * value * value + \
+    chInfo.fCalibration[1] * value  + \
+    chInfo.fCalibration[0];    
+  
   Detector& detector = it->second;
   auto try_push_back =
     [&](BrMap& brmap) {
@@ -199,7 +220,7 @@ void MVMESort::AddData(UInt_t moduleCh,
       }
       else {
 	if(it1->second) {
-	  it1->second->push_back(value);
+	  it1->second->push_back(cal_value);
 	} else {
 	  cerr << "ERROR: NULL vector for detector channel number " << det_ch
 	       << ", for detector " << det_name << "\n";
