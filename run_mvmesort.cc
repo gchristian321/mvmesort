@@ -147,7 +147,7 @@ int run_mvmesort(const std::string& inputFilename,
 
       const auto entryCount = tree->GetEntries();
 
-      cout << "\nPercent complete: 0...";
+      cout << "\nPercent complete: 0... ";
       flush(cout);
       for(int64_t entryIndex = 0; entryIndex < entryCount; entryIndex++) {
 	vmeSort.Clear();

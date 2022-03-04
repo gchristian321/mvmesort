@@ -10,6 +10,7 @@ struct ChannelInfo {
   std::string fDetectorName;
   UInt_t fDetectorChannel;
   std::array<double, 3> fCalibration;  
+  double fThreshold;
 };
 
 class ChannelMap {
@@ -29,6 +30,10 @@ struct Detector {
   BrMap fES;
 };
 
+
+// Class to unpack "detector channel" level data
+// Stuff like Si1, Ring1, etc.
+// Also applied calibnration to the data
 class MVMESort {
 public:
   static const UInt_t kRings = 23;
@@ -36,42 +41,34 @@ public:
 public:
   MVMESort(const std::string& fileOutName,
 	   const std::string& channelMapFile,
-	   bool saveRaw = false);
+	   bool save = false);
   ~MVMESort();
 
 public:
   void SetWarnChannelMap(bool warn) { fChannelMap.SetWarn(warn); }
   void Clear();
-  void Fill()  { fTree->Fill();  }
-  void Write() { fTree->Write(); }
+  void Fill()  { if(fSave) fTree->Fill();  }
+  void Write() { if(fSave) fTree->Write(); }
   void AddData(UInt_t moduleCh, const std::string& module_name,
 	       const std::string& storage_name, double value);
+
 private:
-  template<class T> void InitVector(const std::string& brname, std::vector<T>*& v)
-  {
-    v = nullptr;
-    if(fSaveRaw) {
-      fTree->Branch(brname.c_str(), &v);
-    }
-    else {
-      v = new vector<T>();
-    }
-    if(!v) {
-      throw runtime_error("Problem in MVMESort::InitVector");
-    }
-  }
-  
-private:
-  std::map<std::string, Detector> fBrMap; // holds raw data
+  std::map<std::string, Detector> fDetectorData;
   
 private:
   ChannelMap fChannelMap;
   TFile fFile;
   TTree* fTree;
-  bool fSaveRaw;
+  bool fSave;
 };
 
-
+// Class to sort "physics level" data
+// More high-level parameters than the detector data
+class PhysicsSort {
+public:
+  PhysicsSort();
+  ~PhysicsSort();
+};
 
 
 #endif
