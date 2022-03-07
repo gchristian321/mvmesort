@@ -135,51 +135,61 @@ int run_mvmesort(const std::string& inputFilename,
       ", don't know how to handle this!\n";
     return 1;
   }
-  MVMESort vmeSort(outputFilename.c_str(), channelMapFile, saveRaw);
-  vmeSort.SetWarnChannelMap(channelMapWarn);
-  for (size_t eventIndex = 0; eventIndex < eventTrees.size(); eventIndex++)
-    {
-      auto tree = eventTrees[eventIndex];
-      auto event = exp->GetEvent(eventIndex);
-      //      auto analyzeFunc = analysis.eventFunctions[eventIndex];
+  
+  DetectorSort detSort(outputFilename.c_str(), channelMapFile, saveRaw);
+  PhysicsSort physSort(detSort);
+  detSort.SetWarnChannelMap(channelMapWarn);
 
-      cout << "Replaying data from tree '" << tree->GetName() << "'..." << std::flush;
+  for(size_t eventIndex = 0; eventIndex < eventTrees.size(); eventIndex++) {
+    auto tree = eventTrees[eventIndex];
+    auto event = exp->GetEvent(eventIndex);
+    //      auto analyzeFunc = analysis.eventFunctions[eventIndex];
 
-      const auto entryCount = tree->GetEntries();
+    cout << "Replaying data from tree '" << tree->GetName() << "'..." << std::flush;
 
-      cout << "\nPercent complete: 0... ";
-      flush(cout);
-      for(int64_t entryIndex = 0; entryIndex < entryCount; entryIndex++) {
-	vmeSort.Clear();
+    const auto entryCount = tree->GetEntries();
 
-	// Fills the event and its submodules with data read from the ROOT tree.
-	tree->GetEntry(entryIndex);
+    cout << "\nPercent complete: 0... ";
+    flush(cout);
+    for(int64_t entryIndex = 0; entryIndex < entryCount; entryIndex++) {
+      detSort.Clear();
+      physSort.Clear();
 
-	// Read values from the generated array members of the events
-	// module classes and fill the raw histograms.
-	for(auto& m : event->GetModules()) {
-	  for(const auto& storage : m->GetDataStorages()) {
-	    for(size_t moduleCh = 0; moduleCh < storage.size; moduleCh++) {
-	      double paramValue = storage.ptr[moduleCh];
-	      if (!std::isnan(paramValue)) {
-		vmeSort.AddData(moduleCh, m->GetName(), storage.name, paramValue);
-	      }
-	    } // module Ch
-	  } // storages
-	} // modules
-	vmeSort.Fill();
+      // Fills the event and its submodules with data read from the ROOT tree.
+      tree->GetEntry(entryIndex);
 
-	// Progress counter //
-	static int64_t last = 0;
-	if(int64_t(10.*entryIndex/entryCount) > last) {
-	  last = int64_t(10.*entryIndex/entryCount);
-	  cout << 10*last << "... ";
-	  flush(cout);
-	}
-      } // entryIndex
-      cout << "100\nDone! Processed " << entryCount << " events\n";
-    } // treeIndex
+      // Read values from the generated array members of the events
+      // module classes and fill the raw histograms.
+      for(auto& m : event->GetModules()) {
+	for(const auto& storage : m->GetDataStorages()) {
+	  for(size_t moduleCh = 0; moduleCh < storage.size; moduleCh++) {
+	    double paramValue = storage.ptr[moduleCh];
+	    if (!std::isnan(paramValue)) {
+	      detSort.AddData(moduleCh, m->GetName(), storage.name, paramValue);
+	    }
+	  } // module Ch
+	} // storages
+      } // modules
+      detSort.Fill();
 
-  vmeSort.Write();
+      physSort.Calculate();
+      physSort.Fill();
+      
+      // Progress counter //
+      static int64_t last = 0;
+      if(int64_t(10.*entryIndex/entryCount) > last) {
+	last = int64_t(10.*entryIndex/entryCount);
+	cout << 10*last << "... ";
+	flush(cout);
+      }
+    } // entryIndex
+    cout << "100\nDone! Processed " << entryCount << " events\n";
+  } // treeIndex
+
+  detSort.Write();
+  physSort.Write();
+
+  physSort.PrintEnergyTimeMismatches();
+  
   return 0;
 }
