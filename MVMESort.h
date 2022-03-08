@@ -3,6 +3,26 @@
 #include <map>
 #include <string>
 #include <array>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+
+#include <dlfcn.h> // dlopen, dlsym, dlclose
+#include <getopt.h>
+#include <signal.h>
+#include <sys/stat.h>
+
+// ROOT
+#include <TFile.h>
+#include <TTree.h>
+#include <TH1D.h>
+#include <TRandom.h> // gRandom
+#include <TROOT.h>   // gROOT
+#include <TSystem.h> // gSystem
+#include <TObjString.h>
+
+//using namespace std;
+
 
 struct ChannelInfo {
   std::string fDetectorName;
@@ -102,10 +122,10 @@ public:
   
 private:
   template<class Type_t>
-  void CreateBranch(const string& name, Type_t*& br)
+  void CreateBranch(const std::string& name, Type_t*& br)
   {  br = nullptr; fTree->Branch(name.c_str(), &br);  }
 
-  void AddEnergyTimeMismatch(const string& detname, UInt_t channel);
+  void AddEnergyTimeMismatch(const std::string& detname, UInt_t channel);
   void CalculateSi();
   void CalculateSB();
   void CalculatePPAC();

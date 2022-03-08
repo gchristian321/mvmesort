@@ -1,4 +1,5 @@
-#include "MVMESort.hh"
+#include "MVMESort.h"
+using namespace std;
 
 ChannelMap::ChannelMap(const string& filename):
   fWarn(true)
