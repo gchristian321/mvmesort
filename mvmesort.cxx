@@ -29,8 +29,8 @@ using MVMERunInfo = std::map<std::string, std::string>;
 int run_mvmesort(const std::string& inputFilename,
 								 const std::string& outputFilename,
 								 const std::string& channelMapFile,
-								 bool saveRaw = true,
-								 bool channelMapWarn = false)
+								 bool saveRaw,
+								 bool channelMapWarn)
 {
   // Replay from ROOT file.
   TFile f(inputFilename.c_str(), "read");
@@ -148,7 +148,25 @@ int run_mvmesort(const std::string& inputFilename,
 }
 
 
-int main()//int argc, char** argv)
+int main(int argc, char** argv)
 {
-	return run_mvmesort("~/experiments/ne21pt/testrun-mar2022/220222_133849_raw.root","test123.root","ChannelMap-mvmesort.csv");
+	auto usage =
+		[&]() {
+			cerr << "usage: mvmesort <input file> <output file> <channel map> [--no-save-raw] [--no-channel-map-warn]" << endl;
+			cerr << "OPTIONAL ARGUMENTS\n";
+			cerr << "  --no--save-raw -->> disable saving of \"raw\" (detector-level) data to output file (default IS to save)\n";
+			cerr << "  --no-channel-map-warn  -->> turn off warnings about problems with the channel map file (default IS to warn)\n";
+			return 1;
+		};
+
+	if(argc < 4) return usage();
+
+	bool saveRaw=true, warnChannelMap=true;
+	for(int i=4; i< argc; ++i) {
+		if(string(argv[i]) == "--no-save-raw") saveRaw = false;
+		else if(string(argv[i]) == "--no-channel-map-warn") warnChannelMap = false;
+		else return usage();
+	}
+
+	return run_mvmesort(argv[1], argv[2], argv[3], saveRaw, warnChannelMap);
 }
