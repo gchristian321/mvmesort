@@ -24,9 +24,6 @@ EXTRA_CLEAN =
 .DEFAULT_GOAL = all
 .PHONY: all clean
 
-# Customization point for user analysis
-include analysis.mk
-
 $(EXP_DICT): Experiment_mvme.cxx Experiment_mvme.h $(EXP_LINKDEF)
 	rootcling -f $@ -rml $(EXP_LIB) -rmf libExperiment_mvme.rootmap $(INCLUDES) Experiment_mvme.h $(EXP_LINKDEF)
 
