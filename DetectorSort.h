@@ -93,17 +93,7 @@ public:
 public:
   void SetWarnChannelMap(bool warn) { fChannelMap.SetWarn(warn); }
   void Clear();
-  void Fill()   { if(fSave) fTree->Fill();
-
-
-		auto br = fTree->GetBranch("Si1_Sector3_E");
-		// if(!br) throw br;
-		// auto ppv = (std::vector<double>**)br->GetAddress();
-		// if(!ppv) throw ppv;
-		// if(*ppv == 0) throw *ppv;
-		// if( (*ppv)->size() ) std::cout << (*ppv)->front() << "\n";
-
-	}
+  void Fill()   { if(fSave) fTree->Fill(); }
   void Write()  {	if(fSave) fTree->Write(); }
   void CdFile() { fFile.cd(); }
   void AddData(UInt_t moduleCh, const std::string& module_name,
