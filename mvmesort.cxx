@@ -1,5 +1,6 @@
 // Modified from code in
 // ~/Packages/mvme-1.4.8-3-Linux-x64/share/mvme_root_client/mvme_root_client.cc
+#include <iostream>
 #include <fstream>
 #include <string>
 
@@ -17,7 +18,8 @@
 
 // mvme
 #include "mvme_root_event_objects.h" // base classes for generated experiment ROOT objects
-#include "MVMESort.h"
+#include "DetectorSort.h"
+#include "PhysicsSort.h"
 
 using namespace std;
 using MVMERunInfo = std::map<std::string, std::string>;

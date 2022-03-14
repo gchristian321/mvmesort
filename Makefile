@@ -36,11 +36,16 @@ mvme_root_event_rdict.cxx: $(EVENT_OBJECTS_DEPS)
 libmvme_root_event.so: $(EVENT_OBJECTS_DEPS) mvme_root_event_rdict.cxx
 	$(CXX) $(ROOTCFLAGS) $(CXXFLAGS) $(ROOTLIBS) -shared -fPIC -o $@ $< mvme_root_event_rdict.cxx
 
-MVMESort.o: MVMESort.cxx MVMESort.h 
+PhysicsSort.o: PhysicsSort.cxx PhysicsSort.h 
 	$(CXX) $(ROOTCFLAGS) $(CXXFLAGS) -c $<
 
-mvmesort: mvmesort.cxx $(EXP_LIB) MVMESort.o
-	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) MVMESort.o $< '-Wl,-rpath,$$ORIGIN/:$$ORIGIN/../lib' $(EXP_LINK) -lmvme_root_event $(ROOTLIBS) -o $@
+DetectorSort.o: DetectorSort.cxx DetectorSort.h 
+	$(CXX) $(ROOTCFLAGS) $(CXXFLAGS) -c $<
+
+mvmesort: mvmesort.cxx $(EXP_LIB) PhysicsSort.o DetectorSort.o
+	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) PhysicsSort.o DetectorSort.o \
+$< '-Wl,-rpath,$$ORIGIN/:$$ORIGIN/../lib' $(EXP_LINK) \
+-lmvme_root_event $(ROOTLIBS) -o $@
 
 all: $(ALL_TARGETS)
 
