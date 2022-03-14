@@ -49,14 +49,16 @@ private:
   
 private:
   // SI PARAMS
-  double Si_E[kNumSi];
-  double Si_T[kNumSi];
-  UInt_t Si_Sector[kNumSi];
-  UInt_t Si_Ring[kNumSi];
-  double Si_E12;
-  double Si_E123;
-  double Si_Etot;
-  double Si_ThetaLab;
+	std::array<std::vector<double>*, kNumSi> Si_E;
+	std::array<std::vector<double>*, kNumSi> Si_T;
+	std::array<std::vector<UInt_t>*, kNumSi> Si_Sector;
+	std::array<std::vector<UInt_t>*, kNumSi> Si_Ring;
+	std::array<std::vector<UInt_t>*, kNumSi> Si_RingSectorMatches;
+	std::array<std::vector<double>*, kNumSi> Si_ThetaLab;
+	std::vector<double>* Si_E1;
+	std::vector<double>* Si_E12;
+	std::vector<double>* Si_E123;
+	std::vector<double>* Si_Etot;
 
   // SB PARAMS
   double SB_dE;

@@ -9,19 +9,38 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
   fDetectorSort.CdFile();
   fTree = new TTree("tphys", "Physics level sorted data");
 
+	// Si ---------
   for(int i=0; i< kNumSi; ++i) {
+		Si_E[i] = 0;
+		Si_T[i] = 0;
+		Si_Sector[i] = 0;
+		Si_Ring[i] = 0;
+		Si_RingSectorMatches[i] = 0;
+		Si_ThetaLab[i] = 0;
+		
     int iSi = i+1;
-    fTree->Branch(Form("Si%i_E",iSi), Si_E+i, Form("Si%i_E/D",iSi));
-    fTree->Branch(Form("Si%i_T",iSi), Si_T+i, Form("Si%i_T/D",iSi));
-    fTree->Branch(Form("Si%i_Sector",iSi), Si_Sector+i, Form("Si%i_Sector/i",iSi));
+    fTree->Branch(Form("Si%i_E",iSi), &(Si_E[i]));
+    fTree->Branch(Form("Si%i_T",iSi), &(Si_T[i]));
+    fTree->Branch(Form("Si%i_Sector",iSi), &(Si_Sector[i]));
     if(iSi == 1 || iSi == 3) {
-      fTree->Branch(Form("Si%i_Ring",iSi), Si_Ring+i, Form("Si%i_Ring/i",iSi));
-    }
-    fTree->Branch("Si_E12", &Si_E12, "Si_E12/D");
-    fTree->Branch("Si_E123",&Si_E123,"Si_E123/D");
-    fTree->Branch("Si_Etot",&Si_Etot,"Si_Etot/D");
-    fTree->Branch("Si_ThetaLab",&Si_ThetaLab,"Si_ThetaLab/D");
-  }
+      fTree->Branch(Form("Si%i_Ring",iSi), &(Si_Ring[i]));
+      fTree->Branch(Form("Si%i_RingSectorMatches",iSi),
+										&(Si_RingSectorMatches[i]));
+    } else {
+			Si_Ring[i] = new vector<UInt_t>();
+			Si_RingSectorMatches[i] = new vector<UInt_t>();
+		}
+		fTree->Branch("Si_ThetaLab",&(Si_ThetaLab[i]));
+	}
+	
+	Si_E1 = 0;
+	Si_E12 = 0;
+	Si_E123 = 0;
+	Si_Etot = 0; 
+	fTree->Branch("Si_E1",  &Si_E1);
+	fTree->Branch("Si_E12", &Si_E12);
+	fTree->Branch("Si_E123",&Si_E123);
+	fTree->Branch("Si_Etot",&Si_Etot);
 
   // SB ---------
   fTree->Branch("SB_dE", &SB_dE, "SB_dE/D");
@@ -62,15 +81,17 @@ namespace { template<class T> void setnan(T& t)
 void PhysicsSort::Clear()
 {
   for(int i=0; i< kNumSi; ++i) {
-    setnan(Si_E[i]);
-    setnan(Si_T[i]);
-    setnan(Si_Sector[i]);
-    setnan(Si_Ring[i]);
-  }
-  setnan(Si_E12);
-  setnan(Si_E123);
-  setnan(Si_Etot);
-  setnan(Si_ThetaLab);
+    Si_E[i]->clear();
+    Si_T[i]->clear();
+    Si_Sector[i]->clear();
+    Si_Ring[i]->clear();
+    Si_RingSectorMatches[i]->clear();
+		Si_ThetaLab[i]->clear();
+	}
+	Si_E1->clear();
+	Si_E12->clear();
+	Si_E123->clear();
+	Si_Etot->clear();
 
   setnan(SB_dE);
   setnan(SB_E);
@@ -196,7 +217,7 @@ bool minTime(const PhysicsSort::Hit& l, const PhysicsSort::Hit& r) {
 	return l.T < r.T;
 }; }
 
-//// TODO Handle Multiple Hits Better ////
+//// TODO Better Hit Matching ////
 void PhysicsSort::CalculateSi()
 {
   int MatchWindow = 20000; // channels --> TODO make this dynamic
@@ -219,19 +240,27 @@ void PhysicsSort::CalculateSi()
 
       if(hitRing.size()) {
 				// ring + sector matching
-				auto iRing = min_element(hitRing.begin(), hitRing.end(), minTime);
-				const double& ringE = iRing->E;
-				const double& ringT = iRing->T;
-				const UInt_t& ringN = iRing->Ch;
-
+				sort(hitRing.begin(), hitRing.end(), minTime);
 				sort(hitSector.begin(), hitSector.end(), minTime);
-				for(const auto& hS : hitSector) {
-					if(fabs(hS.E - ringE) < MatchWindow) {
-						Si_E[iSi-1] = ringE;
-						Si_T[iSi-1] = ringT;
-						Si_Ring[iSi-1] = ringN;
-						Si_Sector[iSi-1] = hS.Ch;
-						break;
+
+				// loop rings
+				for(const auto& hR : hitRing) {				
+					Si_E[iSi-1]->push_back(hR.E);
+					Si_T[iSi-1]->push_back(hR.T);
+					Si_Ring[iSi-1]->push_back(hR.Ch);
+					Si_ThetaLab[iSi-1]->push_back(GetSiTheta(hR.Ch));
+
+					// search for sector match
+					Si_RingSectorMatches[iSi-1]->push_back(0);
+					Si_Sector[iSi-1]->push_back(255);
+					UInt_t& num_matches = Si_RingSectorMatches[iSi-1]->back();
+					UInt_t& sector_no = Si_Sector[iSi-1]->back();
+					
+					for(const auto& hS : hitSector) {
+						if(fabs(hS.E - hR.E) < MatchWindow) {
+							++num_matches;
+							sector_no = num_matches == 1 ? hS.Ch : 255;
+						}
 					}
 				}
       }
@@ -239,33 +268,36 @@ void PhysicsSort::CalculateSi()
     else { // sectors only
       // take earliest hit
       if(hitSector.size()) {
-				auto iMin =	min_element(hitSector.begin(), hitSector.end(), minTime);
-	
-				Si_E[iSi-1] = iMin->E;
-				Si_T[iSi-1] = iMin->T;
-				Si_Sector[iSi-1] = iMin->Ch;
-      }
-    }
-  }
-  
-  if(!isnan(Si_E[0])) {
-    Si_Etot = Si_E[0];
-    Si_ThetaLab = GetSiTheta(Si_Ring[0]);
-    
-    if(!isnan(Si_E[1])) {
-      Si_Etot += Si_E[1];
-      Si_E12 = Si_Etot;
-
-      if(!isnan(Si_E[2])) {
-				Si_Etot += Si_E[2];
-				Si_E123 = Si_Etot;
-
-				if(!isnan(Si_E[3])) {
-					Si_Etot += Si_E[3];
+				sort(hitSector.begin(), hitSector.end(), minTime);
+				for(const auto& h : hitSector) {
+					Si_E[iSi-1]->push_back(h.E);
+					Si_T[iSi-1]->push_back(h.T);
+					Si_Sector[iSi-1]->push_back(h.Ch);
 				}
       }
     }
-  }    
+  }
+
+	for(size_t i1 = 0; i1< Si_E[0]->size(); ++i1) {
+		Si_E1->push_back(Si_E[0]->at(i1));
+		Si_Etot->push_back(Si_E[0]->at(i1));
+		
+		if(i1 < Si_E[1]->size()) {
+			Si_Etot->back() += Si_E[1]->at(i1);
+			Si_E12->push_back(Si_E[0]->at(i1) + Si_E[1]->at(i1));
+
+			if(i1 < Si_E[2]->size()) {
+				Si_Etot->back() += Si_E[2]->at(i1);
+				Si_E123->push_back(
+					Si_E[0]->at(i1) + Si_E[1]->at(i1) + Si_E[2]->at(i1));
+
+				if(i1 < Si_E[3]->size()) {
+					Si_Etot->back() += Si_E[3]->at(i1);
+				}
+			}
+		}
+	}
+
 }
 
 void PhysicsSort::CalculateSB()
@@ -347,6 +379,9 @@ void PhysicsSort::CalculateCoinc()
     };
   calcTOF(PPAC_T[0],PPAC_T[1],TOF_PPAC12);
   calcTOF(PPAC_T[0],Phoswich_time,TOF_PPAC_Phoswich);
-  calcTOF(Si_T[0],PPAC_T[0],TOF_Si_PPAC);
-  calcTOF(Si_T[0],Phoswich_time,TOF_Si_Phoswich);
+
+	if(Si_T[0]->size()) {
+		calcTOF(Si_T[0]->at(0),PPAC_T[0],TOF_Si_PPAC);
+		calcTOF(Si_T[0]->at(0),Phoswich_time,TOF_Si_Phoswich);
+	}
 }
