@@ -27,6 +27,7 @@ public:
   void Write()  { fTree->Write(); }
   void Calculate();
   void PrintEnergyTimeMismatches() const;
+	void SetRingSectorMatchWindow(double w) { fMatchWindow = w; }
 	struct Hit { double E, ES, T;	UInt_t Ch; };
 	
 private:
@@ -49,16 +50,18 @@ private:
   
 private:
   // SI PARAMS
+	// --> Detector Level
 	std::array<std::vector<double>*, kNumSi> Si_E;
 	std::array<std::vector<double>*, kNumSi> Si_T;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Sector;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Ring;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_RingSectorMatches;
-	std::array<std::vector<double>*, kNumSi> Si_ThetaLab;
+	// --> Array Level
 	std::vector<double>* Si_E1;
 	std::vector<double>* Si_E12;
 	std::vector<double>* Si_E123;
 	std::vector<double>* Si_Etot;
+	std::vector<double>* Si_ThetaLab;
 
   // SB PARAMS
   double SB_dE;
@@ -91,6 +94,7 @@ private:
   DetectorSort& fDetectorSort;
   TTree* fTree;
   std::map<std::string, Long64_t> fMisMatches;
+	double fMatchWindow;
 };
 
 

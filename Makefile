@@ -50,5 +50,4 @@ $< '-Wl,-rpath,$$ORIGIN/:$$ORIGIN/../lib' $(EXP_LINK) \
 all: $(ALL_TARGETS)
 
 clean:
-	-rm -f $(EXP_LIB) $(EXP_DICT) $(EXTRA_CLEAN) *.so *.o *.pcm *.rootmap mvme_root_event_rdict.cxx
-
+	-rm -f $(EXP_LIB) $(EXP_DICT) $(EXTRA_CLEAN) *.so *.o *.pcm *.rootmap mvme_root_event_rdict.cxx mvmesort

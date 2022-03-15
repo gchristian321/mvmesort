@@ -31,6 +31,7 @@ using MVMERunInfo = std::map<std::string, std::string>;
 int run_mvmesort(const std::string& inputFilename,
 								 const std::string& outputFilename,
 								 const std::string& channelMapFile,
+								 double matchWindow,
 								 bool saveRaw,
 								 bool channelMapWarn)
 {
@@ -93,6 +94,10 @@ int run_mvmesort(const std::string& inputFilename,
   
   DetectorSort detSort(outputFilename.c_str(), channelMapFile, saveRaw);
   PhysicsSort physSort(detSort);
+	if(matchWindow > 0) {
+		physSort.SetRingSectorMatchWindow(matchWindow);
+	}
+	
   detSort.SetWarnChannelMap(channelMapWarn);
 
   for(size_t eventIndex = 0; eventIndex < eventTrees.size(); eventIndex++) {
@@ -156,6 +161,7 @@ int main(int argc, char** argv)
 		[&]() {
 			cerr << "usage: mvmesort <input file> <output file> <channel map> [--no-save-raw] [--no-channel-map-warn]" << endl;
 			cerr << "OPTIONAL ARGUMENTS\n";
+			cerr << "  --match-window=<window> -->> set Si ring + sector energy matching window in MeV (default: DBL_MAX [very large])\n";
 			cerr << "  --no--save-raw -->> disable saving of \"raw\" (detector-level) data to output file (default IS to save)\n";
 			cerr << "  --no-channel-map-warn  -->> turn off warnings about problems with the channel map file (default IS to warn)\n";
 			return 1;
@@ -163,12 +169,28 @@ int main(int argc, char** argv)
 
 	if(argc < 4) return usage();
 
+	auto check_begin =
+		[](const char* arg, const string& key) {
+			return string(arg).substr(0, key.size()) == key;
+		};
+	auto extract_end =
+		[](const char* arg, const string& key) {
+			return string(string(arg).substr(key.size()));
+		};
+	
 	bool saveRaw=true, warnChannelMap=true;
+	double matchWindow = -1;
 	for(int i=4; i< argc; ++i) {
 		if(string(argv[i]) == "--no-save-raw") saveRaw = false;
 		else if(string(argv[i]) == "--no-channel-map-warn") warnChannelMap = false;
+		else if(check_begin(argv[i],"--si-match-window=")) {
+			matchWindow = atof(extract_end(argv[i], "--si-match-window=").c_str());
+			cout << "Set Si ring+sector energy match window to " << matchWindow << "MeV\n";
+		}
 		else return usage();
 	}
 
-	return run_mvmesort(argv[1], argv[2], argv[3], saveRaw, warnChannelMap);
+	return run_mvmesort(
+		argv[1], argv[2], argv[3],
+		matchWindow, saveRaw, warnChannelMap);
 }

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <numeric>
 #include "PhysicsSort.h"
 using namespace std;
 
@@ -6,6 +7,8 @@ using namespace std;
 PhysicsSort::PhysicsSort(DetectorSort& detsort):
   fDetectorSort(detsort)
 {
+	fMatchWindow = numeric_limits<double>().max();
+																								 
   fDetectorSort.CdFile();
   fTree = new TTree("tphys", "Physics level sorted data");
 
@@ -16,7 +19,6 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 		Si_Sector[i] = 0;
 		Si_Ring[i] = 0;
 		Si_RingSectorMatches[i] = 0;
-		Si_ThetaLab[i] = 0;
 		
     int iSi = i+1;
     fTree->Branch(Form("Si%i_E",iSi), &(Si_E[i]));
@@ -30,17 +32,18 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 			Si_Ring[i] = new vector<UInt_t>();
 			Si_RingSectorMatches[i] = new vector<UInt_t>();
 		}
-		fTree->Branch("Si_ThetaLab",&(Si_ThetaLab[i]));
 	}
 	
 	Si_E1 = 0;
 	Si_E12 = 0;
 	Si_E123 = 0;
-	Si_Etot = 0; 
+	Si_Etot = 0;
+	Si_ThetaLab = 0;
 	fTree->Branch("Si_E1",  &Si_E1);
 	fTree->Branch("Si_E12", &Si_E12);
 	fTree->Branch("Si_E123",&Si_E123);
 	fTree->Branch("Si_Etot",&Si_Etot);
+	fTree->Branch("Si_ThetaLab",&Si_ThetaLab);
 
   // SB ---------
   fTree->Branch("SB_dE", &SB_dE, "SB_dE/D");
@@ -86,12 +89,12 @@ void PhysicsSort::Clear()
     Si_Sector[i]->clear();
     Si_Ring[i]->clear();
     Si_RingSectorMatches[i]->clear();
-		Si_ThetaLab[i]->clear();
 	}
 	Si_E1->clear();
 	Si_E12->clear();
 	Si_E123->clear();
 	Si_Etot->clear();
+	Si_ThetaLab->clear();
 
   setnan(SB_dE);
   setnan(SB_E);
@@ -220,8 +223,6 @@ bool minTime(const PhysicsSort::Hit& l, const PhysicsSort::Hit& r) {
 //// TODO Better Hit Matching ////
 void PhysicsSort::CalculateSi()
 {
-  int MatchWindow = 20000; // channels --> TODO make this dynamic
-	
   for(int iSi=1; iSi< kNumSi; ++iSi) {
     //
     // Sectors
@@ -248,7 +249,6 @@ void PhysicsSort::CalculateSi()
 					Si_E[iSi-1]->push_back(hR.E);
 					Si_T[iSi-1]->push_back(hR.T);
 					Si_Ring[iSi-1]->push_back(hR.Ch);
-					Si_ThetaLab[iSi-1]->push_back(GetSiTheta(hR.Ch));
 
 					// search for sector match
 					Si_RingSectorMatches[iSi-1]->push_back(0);
@@ -257,7 +257,7 @@ void PhysicsSort::CalculateSi()
 					UInt_t& sector_no = Si_Sector[iSi-1]->back();
 					
 					for(const auto& hS : hitSector) {
-						if(fabs(hS.E - hR.E) < MatchWindow) {
+						if(fabs(hS.E - hR.E) < fMatchWindow) {
 							++num_matches;
 							sector_no = num_matches == 1 ? hS.Ch : 255;
 						}
@@ -277,27 +277,30 @@ void PhysicsSort::CalculateSi()
       }
     }
   }
-
-	for(size_t i1 = 0; i1< Si_E[0]->size(); ++i1) {
-		Si_E1->push_back(Si_E[0]->at(i1));
-		Si_Etot->push_back(Si_E[0]->at(i1));
+	
+	for(size_t iHit = 0; iHit< Si_E[0]->size(); ++iHit) {
+		Si_E1->push_back(Si_E[0]->at(iHit));
+		Si_Etot->push_back(Si_E[0]->at(iHit));
 		
-		if(i1 < Si_E[1]->size()) {
-			Si_Etot->back() += Si_E[1]->at(i1);
-			Si_E12->push_back(Si_E[0]->at(i1) + Si_E[1]->at(i1));
+		if(iHit < Si_E[1]->size()) {
+			Si_Etot->back() += Si_E[1]->at(iHit);
+			Si_E12->push_back(Si_E[0]->at(iHit) + Si_E[1]->at(iHit));
 
-			if(i1 < Si_E[2]->size()) {
-				Si_Etot->back() += Si_E[2]->at(i1);
+			if(iHit < Si_E[2]->size()) {
+				Si_Etot->back() += Si_E[2]->at(iHit);
 				Si_E123->push_back(
-					Si_E[0]->at(i1) + Si_E[1]->at(i1) + Si_E[2]->at(i1));
+					Si_E[0]->at(iHit) + Si_E[1]->at(iHit) + Si_E[2]->at(iHit));
 
-				if(i1 < Si_E[3]->size()) {
-					Si_Etot->back() += Si_E[3]->at(i1);
+				if(iHit < Si_E[3]->size()) {
+					Si_Etot->back() += Si_E[3]->at(iHit);
 				}
 			}
 		}
 	}
 
+	for( const auto& ringNo : *(Si_Ring[0]) ) {
+		Si_ThetaLab->push_back(GetSiTheta(ringNo));
+	}
 }
 
 void PhysicsSort::CalculateSB()
