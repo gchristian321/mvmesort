@@ -35,10 +35,9 @@ private:
   void CreateBranch(const std::string& name, Type_t*& br)
   {  br = nullptr; fTree->Branch(name.c_str(), &br);  }
 
-	bool ExtractHits(
+	std::vector<Hit> ExtractHits(
 		const std::string& detname_base,
-		int chMin, int chMax, bool inclueShorts,
-		std::vector<Hit>& vHits);
+		int chMin, int chMax, bool inclueShorts);
 
   void AddEnergyTimeMismatch(const std::string& detname);
   void CalculateSi();

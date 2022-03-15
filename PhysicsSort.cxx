@@ -173,12 +173,12 @@ double PhysicsSort::GetSiTheta(UInt_t ring)
   return atan(rMid/kDist);
 }
 
-bool PhysicsSort::ExtractHits(
+vector<PhysicsSort::Hit> PhysicsSort::ExtractHits(
 	const string& detname_base,
-	int chMin, int chMax, bool includeShort,
-	vector<PhysicsSort::Hit>& vHits)
+	int chMin, int chMax, bool includeShort)
 {
-	vHits.clear();
+	vector<Hit> vHits;
+	vHits.reserve(chMax - chMin + 1);
 	
 	for(int iCh = chMin; iCh <= chMax; ++iCh) {
 		string detname = Form("%s%i",detname_base.c_str(),iCh);
@@ -188,30 +188,30 @@ bool PhysicsSort::ExtractHits(
 		const vector<double>& times    = det.GetTimeHits();
 		if(energies.size() != times.size()) {
 			AddEnergyTimeMismatch(detname);
-			return false;
 		}
-		if(includeShort && det.GetEnergyShortHits().size() != energies.size()) {
+		else if(includeShort && det.GetEnergyShortHits().size() != energies.size()) {
 			AddEnergyTimeMismatch(detname + " [SHORT/LONG MISMATCH]");
-			return false;
 		}
-		// equal hit length
-		//
-		const double thresh = fDetectorSort.GetChannelMap().
-			GetChannelInfoByDetector(detname).fThreshold;
+		else {
+			// equal hit length
+			//
+			const double thresh = fDetectorSort.GetChannelMap().
+				GetChannelInfoByDetector(detname).fThreshold;
 		
-		for(size_t iHit=0; iHit< energies.size(); ++iHit) {
-			if(energies.at(iHit) > thresh) {
+			for(size_t iHit=0; iHit< energies.size(); ++iHit) {
+				if(energies.at(iHit) > thresh) {
 
-				vHits.push_back(Hit());
-				Hit& h = vHits.back();
-				h.Ch = iCh;
-				h.E  = energies.at(iHit);
-				h.T  = times.at(iHit);
-				h.ES = includeShort ? det.GetEnergyShortHits().at(iHit) : -sqrt(-1);
+					vHits.push_back(Hit());
+					Hit& h = vHits.back();
+					h.Ch = iCh;
+					h.E  = energies.at(iHit);
+					h.T  = times.at(iHit);
+					h.ES = includeShort ? det.GetEnergyShortHits().at(iHit) : -sqrt(-1);
+				}
 			}
 		}
 	}
-	return true;
+	return vHits;
 }
 
 
@@ -226,18 +226,16 @@ void PhysicsSort::CalculateSi()
   for(int iSi=1; iSi< kNumSi; ++iSi) {
     //
     // Sectors
-		vector<Hit> hitSector;
-		ExtractHits(
-			Form("Si%i_Sector", iSi),
-			1, DetectorSort::kSectors, false, hitSector);
+		auto nameS = Form("Si%i_Sector", iSi);
+		auto hitSector =
+			ExtractHits(nameS,	1, DetectorSort::kSectors, false);
     
     //
     // Rings
     if(iSi == 1 || iSi == 3) {
-			vector<Hit> hitRing;
-      ExtractHits(
-				Form("Si%i_Ring", iSi),
-				1, DetectorSort::kRings, false, hitRing);
+			auto nameR = Form("Si%i_Ring", iSi);
+			vector<Hit> hitRing =
+				ExtractHits(nameR, 1, DetectorSort::kRings, false);
 
       if(hitRing.size()) {
 				// ring + sector matching
@@ -306,8 +304,7 @@ void PhysicsSort::CalculateSi()
 void PhysicsSort::CalculateSB()
 {
   for(int i=1; i<= 2; ++i) {
-		vector<Hit> hits;
-		ExtractHits("SB",i,i,false,hits);
+		auto hits = ExtractHits("SB",i,i,false);
 
 		if(hits.size()) {
 			auto iMin = min_element(hits.begin(), hits.end(), minTime);
@@ -323,10 +320,9 @@ void PhysicsSort::CalculateSB()
 void PhysicsSort::CalculatePPAC()
 {
   for(int i=1;i<=2;++i) {
-		vector<Hit> hitX, hitY, hitCathode;
-		ExtractHits("PPAC_X", i, i, false, hitX);
-		ExtractHits("PPAC_Y", i, i, false, hitY);
-		ExtractHits("PPAC_Cathode", i, i, false, hitCathode);
+		auto hitX = ExtractHits("PPAC_X", i, i, false);
+		auto hitY = ExtractHits("PPAC_Y", i, i, false);
+		auto hitCathode = ExtractHits("PPAC_Cathode", i, i, false);
 		
 		if(hitCathode.size()) {
 			auto iCathode = min_element(
@@ -353,9 +349,8 @@ void PhysicsSort::CalculatePPAC()
 
 void PhysicsSort::CalculatePhoswich()
 {
-	vector<Hit> hitL, hitR;
-	ExtractHits("Phoswich",1,1,true,hitL);
-	ExtractHits("Phoswich",2,2,true,hitR);
+	auto hitL = ExtractHits("Phoswich",1,1,true);
+	auto hitR = ExtractHits("Phoswich",2,2,true);
 
 	if(hitL.size() && hitR.size()) {
 		auto iL = min_element(hitL.begin(), hitL.end(), minTime);
