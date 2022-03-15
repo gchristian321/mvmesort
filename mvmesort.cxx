@@ -190,7 +190,11 @@ int main(int argc, char** argv)
 		else return usage();
 	}
 
-	return run_mvmesort(
+	int err = run_mvmesort(
 		argv[1], argv[2], argv[3],
 		matchWindow, saveRaw, warnChannelMap);
+	if(!err) { // set output permissions to have group write
+		gSystem->Exec(Form("chmod g+w %s",argv[2]));
+	}
+	return err;
 }
