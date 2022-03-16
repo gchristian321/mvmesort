@@ -46,6 +46,11 @@ private:
   void CalculatePhoswich();
   void CalculateCoinc();
   double GetSiTheta(UInt_t ring);
+	void MatchRingSector(
+		int iSi,
+		const std::vector<Hit>& hitRing,
+		const std::vector<Hit>& hitSector);
+
   
 private:
   // SI PARAMS

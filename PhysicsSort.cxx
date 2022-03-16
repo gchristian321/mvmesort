@@ -1,3 +1,5 @@
+#include <iterator>
+#include <algorithm>
 #include <iostream>
 #include <numeric>
 #include "PhysicsSort.h"
@@ -215,10 +217,35 @@ vector<PhysicsSort::Hit> PhysicsSort::ExtractHits(
 }
 
 
-namespace {
-bool minTime(const PhysicsSort::Hit& l, const PhysicsSort::Hit& r) {
+namespace { bool minTime(
+	const PhysicsSort::Hit& l,
+	const PhysicsSort::Hit& r) {
 	return l.T < r.T;
 }; }
+
+void PhysicsSort::MatchRingSector(
+	int iSi,
+	const vector<PhysicsSort::Hit>& hitRing,
+	const vector<PhysicsSort::Hit>& hitSector)
+{
+	// if(hitRing.size()) {
+	// 	// ring + sector matching
+	// 	sort(hitRing.begin(), hitRing.end(), minTime);
+	// 	sort(hitSector.begin(), hitSector.end(), minTime);
+
+	// 	// loop rings
+	// 	for(const auto& hR : hitRing) {
+
+	// 		auto minEnergyTimeDistance =
+	// 			[&](const Hit& lhs, const Hit& rhs) {
+	// 				if(fabs(lhs.E - rhs.E) < fMatchWIndow) {
+						
+	// 				}
+	// 			};
+			
+	// 	}
+	// }
+}
 
 //// TODO Better Hit Matching ////
 void PhysicsSort::CalculateSi()
@@ -243,11 +270,11 @@ void PhysicsSort::CalculateSi()
 				sort(hitSector.begin(), hitSector.end(), minTime);
 
 				// loop rings
-				for(const auto& hR : hitRing) {				
+				for(const auto& hR : hitRing) {
 					Si_E[iSi-1]->push_back(hR.E);
 					Si_T[iSi-1]->push_back(hR.T);
-					Si_Ring[iSi-1]->push_back(hR.Ch);
-
+					Si_Ring[iSi-1]->push_back(hR.Ch);						
+					
 					// search for sector match
 					Si_RingSectorMatches[iSi-1]->push_back(0);
 					Si_Sector[iSi-1]->push_back(255);
@@ -265,13 +292,11 @@ void PhysicsSort::CalculateSi()
     }
     else { // sectors only
       // take earliest hit
-      if(hitSector.size()) {
-				sort(hitSector.begin(), hitSector.end(), minTime);
-				for(const auto& h : hitSector) {
-					Si_E[iSi-1]->push_back(h.E);
-					Si_T[iSi-1]->push_back(h.T);
-					Si_Sector[iSi-1]->push_back(h.Ch);
-				}
+			sort(hitSector.begin(), hitSector.end(), minTime);
+			for(const auto& h : hitSector) {
+				Si_E[iSi-1]->push_back(h.E);
+				Si_T[iSi-1]->push_back(h.T);
+				Si_Sector[iSi-1]->push_back(h.Ch);
       }
     }
   }

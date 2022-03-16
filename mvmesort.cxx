@@ -159,7 +159,7 @@ int main(int argc, char** argv)
 {
 	auto usage =
 		[&]() {
-			cerr << "usage: mvmesort <input file> <output file> <channel map> [--no-save-raw] [--no-channel-map-warn]" << endl;
+			cerr << "usage: mvmesort <input file> <output file> <channel map> [--match-window=<window>] [--no-save-raw] [--no-channel-map-warn]" << endl;
 			cerr << "OPTIONAL ARGUMENTS\n";
 			cerr << "  --match-window=<window> -->> set Si ring + sector energy matching window in MeV (default: DBL_MAX [very large])\n";
 			cerr << "  --no--save-raw -->> disable saving of \"raw\" (detector-level) data to output file (default IS to save)\n";
@@ -183,9 +183,9 @@ int main(int argc, char** argv)
 	for(int i=4; i< argc; ++i) {
 		if(string(argv[i]) == "--no-save-raw") saveRaw = false;
 		else if(string(argv[i]) == "--no-channel-map-warn") warnChannelMap = false;
-		else if(check_begin(argv[i],"--si-match-window=")) {
-			matchWindow = atof(extract_end(argv[i], "--si-match-window=").c_str());
-			cout << "Set Si ring+sector energy match window to " << matchWindow << "MeV\n";
+		else if(check_begin(argv[i],"--match-window=")) {
+			matchWindow = atof(extract_end(argv[i], "--match-window=").c_str());
+			cout << "Set Si ring+sector energy match window to " << matchWindow << " MeV\n";
 		}
 		else return usage();
 	}
