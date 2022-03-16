@@ -46,11 +46,7 @@ private:
   void CalculatePhoswich();
   void CalculateCoinc();
   double GetSiTheta(UInt_t ring);
-	void MatchRingSector(
-		int iSi,
-		const std::vector<Hit>& hitRing,
-		const std::vector<Hit>& hitSector);
-
+	UInt_t MatchRingSector(const Hit& hR,	std::vector<Hit>& hitSector);
   
 private:
   // SI PARAMS
@@ -59,7 +55,6 @@ private:
 	std::array<std::vector<double>*, kNumSi> Si_T;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Sector;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Ring;
-	std::array<std::vector<UInt_t>*, kNumSi> Si_RingSectorMatches;
 	// --> Array Level
 	std::vector<double>* Si_E1;
 	std::vector<double>* Si_E12;

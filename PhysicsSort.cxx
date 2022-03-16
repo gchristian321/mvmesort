@@ -20,7 +20,6 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 		Si_T[i] = 0;
 		Si_Sector[i] = 0;
 		Si_Ring[i] = 0;
-		Si_RingSectorMatches[i] = 0;
 		
     int iSi = i+1;
     fTree->Branch(Form("Si%i_E",iSi), &(Si_E[i]));
@@ -28,11 +27,8 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
     fTree->Branch(Form("Si%i_Sector",iSi), &(Si_Sector[i]));
     if(iSi == 1 || iSi == 3) {
       fTree->Branch(Form("Si%i_Ring",iSi), &(Si_Ring[i]));
-      fTree->Branch(Form("Si%i_RingSectorMatches",iSi),
-										&(Si_RingSectorMatches[i]));
     } else {
 			Si_Ring[i] = new vector<UInt_t>();
-			Si_RingSectorMatches[i] = new vector<UInt_t>();
 		}
 	}
 	
@@ -90,7 +86,6 @@ void PhysicsSort::Clear()
     Si_T[i]->clear();
     Si_Sector[i]->clear();
     Si_Ring[i]->clear();
-    Si_RingSectorMatches[i]->clear();
 	}
 	Si_E1->clear();
 	Si_E12->clear();
@@ -223,30 +218,32 @@ namespace { bool minTime(
 	return l.T < r.T;
 }; }
 
-void PhysicsSort::MatchRingSector(
-	int iSi,
-	const vector<PhysicsSort::Hit>& hitRing,
-	const vector<PhysicsSort::Hit>& hitSector)
+UInt_t PhysicsSort::MatchRingSector(
+	const PhysicsSort::Hit& hR,
+	vector<PhysicsSort::Hit>& hitSector)
 {
-	// if(hitRing.size()) {
-	// 	// ring + sector matching
-	// 	sort(hitRing.begin(), hitRing.end(), minTime);
-	// 	sort(hitSector.begin(), hitSector.end(), minTime);
+	UInt_t sectorMatch = 255;
+	auto itLastMatch = partition(
+		hitSector.begin(), hitSector.end(),
+		[&](const Hit& h) {
+			return fabs(h.E - hR.E) < fMatchWindow;
+		});
+	
+	if(itLastMatch != hitSector.begin()) {
+		auto itMinTime = min_element(
+			hitSector.begin(), itLastMatch,
+			[&](const Hit& l, const Hit& r) {
+				return fabs(l.T - hR.T) < fabs(r.T - hR.T);
+			});
 
-	// 	// loop rings
-	// 	for(const auto& hR : hitRing) {
-
-	// 		auto minEnergyTimeDistance =
-	// 			[&](const Hit& lhs, const Hit& rhs) {
-	// 				if(fabs(lhs.E - rhs.E) < fMatchWIndow) {
-						
-	// 				}
-	// 			};
-			
-	// 	}
-	// }
+		sectorMatch = itMinTime->Ch;
+		hitSector.erase(itMinTime);
+	}
+	
+	return sectorMatch;
 }
-
+				
+		
 //// TODO Better Hit Matching ////
 void PhysicsSort::CalculateSi()
 {
@@ -264,42 +261,26 @@ void PhysicsSort::CalculateSi()
 			vector<Hit> hitRing =
 				ExtractHits(nameR, 1, DetectorSort::kRings, false);
 
-      if(hitRing.size()) {
-				// ring + sector matching
-				sort(hitRing.begin(), hitRing.end(), minTime);
-				sort(hitSector.begin(), hitSector.end(), minTime);
-
-				// loop rings
-				for(const auto& hR : hitRing) {
-					Si_E[iSi-1]->push_back(hR.E);
-					Si_T[iSi-1]->push_back(hR.T);
-					Si_Ring[iSi-1]->push_back(hR.Ch);						
-					
-					// search for sector match
-					Si_RingSectorMatches[iSi-1]->push_back(0);
-					Si_Sector[iSi-1]->push_back(255);
-					UInt_t& num_matches = Si_RingSectorMatches[iSi-1]->back();
-					UInt_t& sector_no = Si_Sector[iSi-1]->back();
-					
-					for(const auto& hS : hitSector) {
-						if(fabs(hS.E - hR.E) < fMatchWindow) {
-							++num_matches;
-							sector_no = num_matches == 1 ? hS.Ch : 255;
-						}
-					}
-				}
-      }
-    }
-    else { // sectors only
-      // take earliest hit
+			// loop rings (sorted by time)
+			sort(hitRing.begin(), hitRing.end(), minTime);
+			for(const auto& hR : hitRing) {
+				Si_E[iSi-1]->push_back(hR.E);
+				Si_T[iSi-1]->push_back(hR.T);
+				Si_Ring[iSi-1]->push_back(hR.Ch);						
+				Si_Sector[iSi-1]->push_back(
+					MatchRingSector(hR, hitSector));
+			}
+		}
+		else { // sectors only
+			// take earliest hit
 			sort(hitSector.begin(), hitSector.end(), minTime);
-			for(const auto& h : hitSector) {
-				Si_E[iSi-1]->push_back(h.E);
-				Si_T[iSi-1]->push_back(h.T);
-				Si_Sector[iSi-1]->push_back(h.Ch);
-      }
-    }
-  }
+			for(const auto& hS : hitSector) {
+				Si_E[iSi-1]->push_back(hS.E);
+				Si_T[iSi-1]->push_back(hS.T);
+				Si_Sector[iSi-1]->push_back(hS.Ch);
+			}
+		}
+	}
 	
 	for(size_t iHit = 0; iHit< Si_E[0]->size(); ++iHit) {
 		Si_E1->push_back(Si_E[0]->at(iHit));
