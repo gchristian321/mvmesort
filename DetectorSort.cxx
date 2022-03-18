@@ -124,9 +124,9 @@ void ChannelMap::Print() const
 
 void Detector::Clear()
 {
-	if(fE) fE->clear();
-	if(fT) fT->clear();
-	if(fES) fES->clear();
+	if(fE && fE->size()) fE->clear();
+	if(fT && fT->size()) fT->clear();
+	if(fES && fES->size()) fES->clear();
 }
 
 Detector::Detector(const std::string& name, ADCMode adcMode):
@@ -144,10 +144,11 @@ Detector::~Detector()
 
 void Detector::SetupBranches(TTree* tree)
 {
-	tree->Branch(Form("%s_E", GetName().c_str()), &fE);
-	tree->Branch(Form("%s_T", GetName().c_str()), &fT);
+	const Int_t bufsize = 32000;
+	tree->Branch(Form("%s_E", GetName().c_str()), &fE, bufsize);
+	tree->Branch(Form("%s_T", GetName().c_str()), &fT, bufsize);
 	if(fADCMode == kPSD) {
-		tree->Branch(Form("%s_ES", GetName().c_str()), &fES);
+		tree->Branch(Form("%s_ES", GetName().c_str()), &fES, bufsize);
 	}
 }
 

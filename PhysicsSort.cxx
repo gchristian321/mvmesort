@@ -76,22 +76,29 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 PhysicsSort::~PhysicsSort()
 { }
 
-namespace { template<class T> void setnan(T& t)
-{ t = -sqrt(-1); } }
+namespace {
+
+template<class T> void setnan(T& t)
+{ t = -sqrt(-1); }
+
+template<class T> void doclear(T* t)
+{ if(t->size()) t->clear(); }
+
+}
 
 void PhysicsSort::Clear()
 {
   for(int i=0; i< kNumSi; ++i) {
-    Si_E[i]->clear();
-    Si_T[i]->clear();
-    Si_Sector[i]->clear();
-    Si_Ring[i]->clear();
+    doclear(Si_E[i]);
+    doclear(Si_T[i]);
+    doclear(Si_Sector[i]);
+    doclear(Si_Ring[i]);
 	}
-	Si_E1->clear();
-	Si_E12->clear();
-	Si_E123->clear();
-	Si_Etot->clear();
-	Si_ThetaLab->clear();
+	doclear(Si_E1);
+	doclear(Si_E12);
+	doclear(Si_E123);
+	doclear(Si_Etot);
+	doclear(Si_ThetaLab);
 
   setnan(SB_dE);
   setnan(SB_E);
