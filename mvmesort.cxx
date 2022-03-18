@@ -33,7 +33,8 @@ int run_mvmesort(const std::string& inputFilename,
 								 const std::string& channelMapFile,
 								 double matchWindow,
 								 bool saveRaw,
-								 bool channelMapWarn)
+								 bool channelMapWarn,
+								 bool doPhysics)
 {
   // Replay from ROOT file.
   TFile f(inputFilename.c_str(), "read");
@@ -93,9 +94,11 @@ int run_mvmesort(const std::string& inputFilename,
   }
   
   DetectorSort detSort(outputFilename.c_str(), channelMapFile, saveRaw);
-  PhysicsSort physSort(detSort);
-	if(matchWindow > 0) {
-		physSort.SetRingSectorMatchWindow(matchWindow);
+  unique_ptr<PhysicsSort> physSort(
+		doPhysics ? new PhysicsSort(detSort) : nullptr);
+	
+	if(matchWindow > 0 && doPhysics) {
+		physSort->SetRingSectorMatchWindow(matchWindow);
 	}
 	
   detSort.SetWarnChannelMap(channelMapWarn);
@@ -105,6 +108,12 @@ int run_mvmesort(const std::string& inputFilename,
     auto event = exp->GetEvent(eventIndex);
     //      auto analyzeFunc = analysis.eventFunctions[eventIndex];
 
+#if 0
+		auto cachesize = 100000000U;
+		tree->SetCacheSize(cachesize); //<<<
+		tree->AddBranchToCache("*", true);
+#endif
+		
     cout << "Replaying data from tree '" << tree->GetName() << "'..." << std::flush;
 
     const auto entryCount = tree->GetEntries();
@@ -112,8 +121,8 @@ int run_mvmesort(const std::string& inputFilename,
     cout << "\nPercent complete: 0... ";
     flush(cout);
     for(int64_t entryIndex = 0; entryIndex < entryCount; entryIndex++) {
-      detSort.Clear();
-      physSort.Clear();
+			detSort.Clear();
+			if(doPhysics) physSort->Clear();
 
       // Fills the event and its submodules with data read from the ROOT tree.
       tree->GetEntry(entryIndex);
@@ -130,10 +139,12 @@ int run_mvmesort(const std::string& inputFilename,
 					} // module Ch
 				} // storages
       } // modules
-      detSort.Fill();
+			detSort.Fill();
 
-      physSort.Calculate();
-      physSort.Fill();
+      if(doPhysics) {
+				physSort->Calculate();
+				physSort->Fill();
+			}
       
       // Progress counter //
       static int64_t last = 0;
@@ -147,9 +158,10 @@ int run_mvmesort(const std::string& inputFilename,
   } // treeIndex
 
   detSort.Write();
-  physSort.Write();
-
-  physSort.PrintEnergyTimeMismatches();
+	if(doPhysics) {
+		physSort->Write();
+		physSort->PrintEnergyTimeMismatches();
+	}
   
   return 0;
 }
@@ -164,6 +176,7 @@ int main(int argc, char** argv)
 			cerr << "  --match-window=<window> -->> set Si ring + sector energy matching window in MeV (default: DBL_MAX [very large])\n";
 			cerr << "  --no--save-raw -->> disable saving of \"raw\" (detector-level) data to output file (default IS to save)\n";
 			cerr << "  --no-channel-map-warn  -->> turn off warnings about problems with the channel map file (default IS to warn)\n";
+			cerr << "  --no-physics -->> turn off \"Physics\" level parameter calculation\n";
 			return 1;
 		};
 
@@ -178,7 +191,7 @@ int main(int argc, char** argv)
 			return string(string(arg).substr(key.size()));
 		};
 	
-	bool saveRaw=true, warnChannelMap=true;
+	bool saveRaw=true, warnChannelMap=true, doPhysics=true;
 	double matchWindow = -1;
 	for(int i=4; i< argc; ++i) {
 		if(string(argv[i]) == "--no-save-raw") saveRaw = false;
@@ -187,12 +200,16 @@ int main(int argc, char** argv)
 			matchWindow = atof(extract_end(argv[i], "--match-window=").c_str());
 			cout << "Set Si ring+sector energy match window to " << matchWindow << " MeV\n";
 		}
-		else return usage();
+		else if(string(argv[i]) == "--no-physics") doPhysics = false;
+		else {
+			cerr << "\nUnrecognized flag: \"" << argv[i] << "\"\n";
+			return usage();
+		}
 	}
 
 	int err = run_mvmesort(
 		argv[1], argv[2], argv[3],
-		matchWindow, saveRaw, warnChannelMap);
+		matchWindow, saveRaw, warnChannelMap, doPhysics);
 	if(!err) { // set output permissions to have group write
 		gSystem->Exec(Form("chmod g+w %s",argv[2]));
 	}
