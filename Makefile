@@ -7,7 +7,7 @@ ROOTLIBS	=	$(shell root-config --libs)
 MVMELIBS        =       -L$(PWD)  -lmvme_root_event
 #INCLUDES    =	
 
-CXXFLAGS   +=	-std=c++14 -fPIC
+CXXFLAGS   +=	-std=c++14 -fPIC -O2
 CXXFLAGS   +=   $(INCLUDES)
 
 EXP_LIB		= libExperiment_mvme.so
