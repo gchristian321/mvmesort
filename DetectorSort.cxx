@@ -127,14 +127,15 @@ void Detector::Clear()
 	if(fE && fE->size()) fE->clear();
 	if(fT && fT->size()) fT->clear();
 	if(fES && fES->size()) fES->clear();
+	if(fChannel && fChannel->size()) fChannel->clear();
 }
 
 Detector::Detector(const std::string& name, ADCMode adcMode):
-	fName(name), fADCMode(adcMode), fE(0), fT(0), fES(0)
+	fName(name), fADCMode(adcMode), fE(0), fT(0), fES(0), fChannel(0)
 {   }
 
 Detector::Detector(const std::string& name, ADCMode adcMode, TTree* tree):
-	fName(name), fADCMode(adcMode), fE(0), fT(0), fES(0)
+	fName(name), fADCMode(adcMode), fE(0), fT(0), fES(0), fChannel(0)
 {
 	SetupBranches(tree);
 }
@@ -147,6 +148,7 @@ void Detector::SetupBranches(TTree* tree)
 	const Int_t bufsize = 32000;
 	tree->Branch(Form("%s_E", GetName().c_str()), &fE, bufsize);
 	tree->Branch(Form("%s_T", GetName().c_str()), &fT, bufsize);
+	tree->Branch(Form("%s_Channel", GetName.c_str()), &fChannel, bufsize);
 	if(fADCMode == kPSD) {
 		tree->Branch(Form("%s_ES", GetName().c_str()), &fES, bufsize);
 	}
