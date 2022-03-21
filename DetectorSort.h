@@ -41,6 +41,8 @@ private:
 };
 
 
+typedef std::map<UInt_t, std::vector<double>*> BrMap;
+
 class Detector {
 public:
 	Detector(const std::string& name, ADCMode type);
@@ -49,17 +51,11 @@ public:
 
 public:
 	void AddEnergyHit(double e)
-		{ if(fE) fE->push_back(e); else
-				throw std::runtime_error("(AddHit) fE is null"); }
+		{ if(fE) fE->push_back(e); else throw std::runtime_error("(AddHit) fE is null"); }
 	void AddTimeHit(double t)
-		{ if(fT) fT->push_back(t);
-			else throw std::runtime_error("(AddHit) fT is null"); }
+		{ if(fT) fT->push_back(t); else throw std::runtime_error("(AddHit) fT is null"); }
 	void AddEnergyShortHit(double es)
-		{ if(fES) fES->push_back(es);
-			else throw std::runtime_error("(AddHit) fES is null"); }
-	void AddChannelHit(UInt_t ch)
-		{ if(fChannel) fChannel->push_back(ch);
-			else throw std::runtime_error("(AddHit) fChannel is null"); }
+		{ if(fES) fES->push_back(es); else throw std::runtime_error("(AddHit) fES is null"); }
 	
 	const std::vector<double>& GetEnergyHits() const
 		{ if(fE) return *fE; else throw std::runtime_error("(GetHit) fE is null"); }
@@ -67,9 +63,6 @@ public:
 		{ if(fT) return *fT; else throw std::runtime_error("(GetHit) fT is null"); }
 	const std::vector<double>& GetEnergyShortHits() const
 		{ if(fES) return *fES; throw std::runtime_error("(GetHit) fES is null");   }
-	const std::vector<UInt_t>& GetChannelHits() const
-		{ if(fChannel) return *fChannel;
-			throw std::runtime_error("(GetHit) fChannel is null");   }
 	const std::string& GetName() const { return fName; }
 	
 	void Clear();
@@ -81,7 +74,6 @@ private:
 	std::vector<double>* fE;
 	std::vector<double>* fT;
 	std::vector<double>* fES;
-	std::vector<UInt_t>* fChannel;
 };
 
 

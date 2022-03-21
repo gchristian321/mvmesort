@@ -31,19 +31,15 @@ double peakFunction3(double*x, double*p)
 	return peakFunction(x,p) + peakFunction(x,p+6) + peakFunction(x,p+12);
 }
 
-TF1* create_fpeak(int npeaks, string name = "")
+TF1* create_fpeak()
 {
-	if(name == "") name = Form("fpeak%i",npeaks);
-	auto f = dynamic_cast<TF1*>(gROOT->GetListOfFunctions()->FindObject(name.c_str()));
+	auto f = dynamic_cast<TF1*>(gROOT->GetListOfFunctions()->FindObject("fpeak"));
 	if(f) return f;
-
-	TF1* fpeak = 0;
-	if(npeaks == 3) fpeak = new TF1(name.c_str(), peakFunction3, 0, 65535, 18);
-	else if(npeaks == 1) fpeak = new TF1(name.c_str(), peakFunction, 0, 65535, 6);
-	else return fpeak;
 	
+	TF1* fpeak = new TF1("fpeak", peakFunction3, 0, 65535, 18);
+
 	fpeak->SetNpx(10000);
-	for(int i=0; i< npeaks; ++i) {
+	for(int i=0; i< 3; ++i) {
 		fpeak->FixParameter(5+6*i, -1);
 	}
 	
@@ -103,7 +99,7 @@ FitResults fit_peaks(
 		return nogood;
 	}
 
-	TF1* fpk = create_fpeak(3);
+	TF1* fpk = create_fpeak();
 
 	double R = 0.01;
 	double beta = 0.001;
@@ -172,97 +168,7 @@ FitResults fit_peaks(
 	}
 	return out;
 };
-
-FitResults fit_peaks1(
-	TTree* t, int det, int channel, const string& ringOrSector, bool batch = false) {
-	TH1* halpha = 0;
-	auto pk = find_peaks(t,det,channel,ringOrSector,&halpha);
-	if(pk[0] == 0 && pk[1] == 0 && pk[2] == 0) {
-		FitResults nogood;
-		nogood.success = false;
-		return nogood;
-	}
-
-	array<TFitResultPtr,3> fr;
-	array<TF1*,3> fpk;
-	for(int i=0; i< 3; ++i) {
-		fpk[i] = create_fpeak(1,Form("fpeak_%i",i));
-	}
-
-	double R = 0.01;
-	double beta = 0.001;
-	for(int i=0; i< 3; ++i) {
-		double c = pk[i];
-		double H = halpha->GetBinContent(halpha->FindBin(c));
-		double FWHM = (40/5e3) * c;
-
-		fpk[i]->SetParameter(0, H);
-		fpk[i]->SetParameter(1, c);
-		fpk[i]->SetParameter(2, FWHM);
-		fpk[i]->FixParameter(3, 0);
-		fpk[i]->FixParameter(4, 0);
-
-		fr[i] = halpha->Fit(fpk[i],"qnsw"); // gaus only
-	}
-
-	array<double,3> lo,hi;
-	for(int i=0; i< 3; ++i) {
-		fpk[i]->FixParameter(0, fr[i]->GetParams()[0]);
-		fpk[i]->FixParameter(1, fr[i]->GetParams()[1]);
-		fpk[i]->FixParameter(2, fr[i]->GetParams()[2]);
-		fpk[i]->ReleaseParameter(3);
-		fpk[i]->ReleaseParameter(4);
-		fpk[i]->SetParameter(3, R);
-		fpk[i]->SetParameter(4, beta);
-
-		lo[i] = fr[i]->GetParams()[1] - fr[i]->GetParams()[2]*2.5;
-		hi[i] = fr[i]->GetParams()[1] + fr[i]->GetParams()[2]*2.5;
-		
-		fr[i] = halpha->Fit(fpk[i],"qns","",lo[i],hi[i]); // fixed gaus, fits skew
-	}
-
-	array<double,3> centers;
-	for(int i=0;i<3;++i) {
-		for(int j=0; j< 5; ++j) {
-			fpk[i]->ReleaseParameter(j);
-		}
-		string opt = batch ? "qns" : "s";
-		fr[i] = halpha->Fit(fpk[i],opt.c_str(),"",lo[i],hi[i]);
-		centers[i] = fr[i]->GetParams()[1];
-		fpk[i]->SetRange(lo[i],hi[i]);
-	}
-
-
-	int icsort[3];
-	TMath::Sort(3,&centers[0],icsort,false);
-		
-	FitResults out;
-	out.success = true;
-	for(int i=0; i< 3; ++i) {
-		out.H[i]    = fr[icsort[i]]->GetParams()[0];
-		out.C[i]    = fr[icsort[i]]->GetParams()[1];
-		out.FWHM[i] = fr[icsort[i]]->GetParams()[2];
-		out.R[i]    = fr[icsort[i]]->GetParams()[3];
-		out.BETA[i] = fr[icsort[i]]->GetParams()[4];
-		if(fr[icsort[i]]->Status() != 0) out.success = false;
-	}
-
-	if(!batch) {
-		halpha->GetXaxis()->SetRangeUser(lo[icsort[0]],hi[icsort[2]]);
-		halpha->SetMarkerStyle(20);
-		halpha->SetLineWidth(2);
-		halpha->SetMarkerColor(kBlack);
-		halpha->SetLineColor(kBlack);
-		halpha->Draw("E");
-		for(int i=0; i< 3; ++i) fpk[i]->Draw("SAME");
-	} else {
-		halpha->Delete();
-	}
-
-	return out;
-};
-
-
+	
 pair<double,double> fit_calibration(const array<double, 3>& channels) {
 	array<double, 3> energies = { 5.157, 5.486, 5.805 };
 	TGraph gr(3,&channels[0],&energies[0]);
@@ -276,7 +182,7 @@ map<int, pair<double,double> > fit_all_peaks(
 
 	int iMax = ringOrSector == "Ring" ? 23 : 16;
 	for(int i=1; i<= iMax; ++i) {
-		if(fit) {auto pk = fit_peaks1(t,det,i,ringOrSector,true);
+		if(fit) {auto pk = fit_peaks(t,det,i,ringOrSector,true);
 			if(pk.success) {
 				m.emplace(i, fit_calibration(pk.C));
 			}
