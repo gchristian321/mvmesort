@@ -40,8 +40,8 @@ ChannelMap::ChannelMap(const string& filename):
     }
 
     if(read_line) {
-      // module name, module ch, detector name, detector ch,
-			// mode, ecal[0,1,2], thresh, tcal[0,1,2], escal[0,1,2]
+			// 0          , 1        , 2            , 3          , 4   , 5,6,7      , 8     , 9,10,11    , 12,13,14
+      // module name, module ch, detector name, detector ch, mode, ecal[0,1,2], thresh, tcal[0,1,2], escal[0,1,2]
       string moduleName = ltok.at(0);
       UInt_t moduleCh   = atoi(ltok.at(1).c_str());
       string detName    = ltok.at(2) + ltok.at(3);
@@ -51,12 +51,16 @@ ChannelMap::ChannelMap(const string& filename):
       chInfo.fDetectorName = detName;
 			chInfo.fMode = mode;
       for(int i=0; i< 3; ++i) {
-				chInfo.fEcal[i]  = atof(ltok.at(i+5).c_str());
-				chInfo.fTcal[i]  = atof(ltok.at(i+8).c_str());
-				chInfo.fEScal[i] = atof(ltok.at(i+11).c_str());
+				chInfo.fEcal[i]  = atof(ltok.at(i+5).c_str()); //5,6,7
+				chInfo.fTcal[i]  = atof(ltok.at(i+9).c_str()); //8,9,10
+				chInfo.fEScal[i] = atof(ltok.at(i+12).c_str());//11,12,13
       }
       chInfo.fThreshold = atof(ltok.at(8).c_str());
-      
+
+			// Module Name,Module Channel,Detector Name,Detector Channel,"Mode (0 ADC, 1 PSD)",Energy Cal P0,Energy Cal P1,Energy Cal P2,Energy Threshold,Time Cal P0,Time Cal P1,Time Cal P2,Short Cal P0,Short Cal P1,Short Cal P2
+			// mdpp32_1_scp_Sector_Si1And2,0,Si1_Sector,1,0,268.693,0.17483,0,0,0,1,0,0,1,0
+
+			
       auto emp = m_[moduleName].emplace(moduleCh, chInfo);
       if(!emp.second) {
 				cerr << "WARNING: duplicate channel in mapping for (module, channel): "
@@ -223,6 +227,7 @@ void DetectorSort::AddData(UInt_t moduleCh,
 				Pcal[2] * value * value +								\
 				Pcal[1] * value  +											\
 				Pcal[0];  
+			cout << Pcal[2] << ", " << Pcal[1] << ", " << Pcal[0] << "  | " << value << " --> " << cal_value << endl;
 			return cal_value;
     };
 	auto check_back_of_string =
@@ -233,15 +238,15 @@ void DetectorSort::AddData(UInt_t moduleCh,
      
   if(check_back_of_string(storage_name, "amplitude") ||
 		 check_back_of_string(storage_name, "integration_long"))
-	{
+	{ cout << "energy " ;
 		detector.AddEnergyHit(calibrate(chInfo.fEcal));
   }
   else if(check_back_of_string(storage_name, "channel_time"))
-	{
+	{ cout << "time " ;
 		detector.AddTimeHit(calibrate(chInfo.fTcal));
   }
   else if(check_back_of_string(storage_name, "integration_short"))
-	{
+	{ cout << "short " ;
 		detector.AddEnergyShortHit(calibrate(chInfo.fEScal));
   }
   else { // IGNORE module stuff
