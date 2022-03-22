@@ -227,7 +227,6 @@ void DetectorSort::AddData(UInt_t moduleCh,
 				Pcal[2] * value * value +								\
 				Pcal[1] * value  +											\
 				Pcal[0];  
-			cout << Pcal[2] << ", " << Pcal[1] << ", " << Pcal[0] << "  | " << value << " --> " << cal_value << endl;
 			return cal_value;
     };
 	auto check_back_of_string =
@@ -238,15 +237,15 @@ void DetectorSort::AddData(UInt_t moduleCh,
      
   if(check_back_of_string(storage_name, "amplitude") ||
 		 check_back_of_string(storage_name, "integration_long"))
-	{ cout << "energy " ;
+	{ 
 		detector.AddEnergyHit(calibrate(chInfo.fEcal));
   }
   else if(check_back_of_string(storage_name, "channel_time"))
-	{ cout << "time " ;
+	{ 
 		detector.AddTimeHit(calibrate(chInfo.fTcal));
   }
   else if(check_back_of_string(storage_name, "integration_short"))
-	{ cout << "short " ;
+	{ 
 		detector.AddEnergyShortHit(calibrate(chInfo.fEScal));
   }
   else { // IGNORE module stuff
