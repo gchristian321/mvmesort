@@ -254,7 +254,7 @@ UInt_t PhysicsSort::MatchRingSector(
 //// TODO Better Hit Matching ////
 void PhysicsSort::CalculateSi()
 {
-  for(int iSi=1; iSi< kNumSi; ++iSi) {
+  for(int iSi=1; iSi<= kNumSi; ++iSi) {
     //
     // Sectors
 		auto nameS = Form("Si%i_Sector", iSi);
