@@ -386,7 +386,7 @@ void PhysicsSort::CalculateCoinc()
 {
   auto calcTOF =
     [](double t1,double t2,double& tof) {
-      if(!isnan(t1) && !isnan(t2)) tof = t2-t2;
+      if(!isnan(t1) && !isnan(t2)) tof = t2-t1;
     };
   calcTOF(PPAC_T[0],PPAC_T[1],TOF_PPAC12);
   calcTOF(PPAC_T[0],Phoswich_time,TOF_PPAC_Phoswich);
