@@ -55,6 +55,8 @@ private:
 	std::array<std::vector<double>*, kNumSi> Si_T;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Sector;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Ring;
+	std::array<std::vector<UInt_t>*, kNumSi> Si_Saturated;
+	std::array<std::vector<UInt_t>*, kNumSi> Si_Mult;
 	// --> Array Level
 	std::vector<double>* Si_E1;
 	std::vector<double>* Si_E12;

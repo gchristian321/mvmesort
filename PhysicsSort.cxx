@@ -20,6 +20,8 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 		Si_T[i] = 0;
 		Si_Sector[i] = 0;
 		Si_Ring[i] = 0;
+		Si_Mult[i] = 0;
+		Si_Saturated[i] = 0;
 		
     int iSi = i+1;
     fTree->Branch(Form("Si%i_E",iSi), &(Si_E[i]));
@@ -30,6 +32,8 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
     } else {
 			Si_Ring[i] = new vector<UInt_t>();
 		}
+		fTree->Branch(Form("Si%i_Saturated",iSi), &(Si_Saturated[i]));
+		fTree->Branch(Form("Si%i_Mult",iSi), &(Si_Mult[i]));
 	}
 	
 	Si_E1 = 0;
@@ -93,6 +97,8 @@ void PhysicsSort::Clear()
     doclear(Si_T[i]);
     doclear(Si_Sector[i]);
     doclear(Si_Ring[i]);
+		doclear(Si_Saturated[i]);
+		doclear(Si_Mult[i]);
 	}
 	doclear(Si_E1);
 	doclear(Si_E12);
@@ -286,6 +292,25 @@ void PhysicsSort::CalculateSi()
 				Si_T[iSi-1]->push_back(hS.T);
 				Si_Sector[iSi-1]->push_back(hS.Ch);
 			}
+		}
+
+		// multiplicity
+		// (store as vector for TTree::Draw matching)
+		Si_Mult[iSi-1]->insert(
+			Si_Mult[iSi-1]->begin(),
+			Si_E[iSi-1]->size(),
+			Si_E[iSi-1]->size());
+		// saturation
+		// TODO TEMPORARY -->> Need to set better values and not hard code
+		//
+		for(const auto& eval : *(Si_E[iSi-1])) {
+			UInt_t saturated = 1;
+			if     (iSi == 1 && eval > 0.3e3 && eval < 11.0e3) saturated = 0;
+			else if(iSi == 2 && eval > 0.8e3 && eval < 22.5e3) saturated = 0;
+			else if(iSi == 3 && eval > 0.2e3 && eval < 45.0e3) saturated = 0;
+			else if(iSi == 4 && eval > 0.3e3 && eval < 17.2e3) saturated = 0;
+
+			Si_Saturated[iSi-1]->push_back(saturated);
 		}
 	}
 	
