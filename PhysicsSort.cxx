@@ -40,11 +40,13 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 	Si_E12 = 0;
 	Si_E123 = 0;
 	Si_Etot = 0;
+	Si_Etot_nosat = 0;
 	Si_ThetaLab = 0;
 	fTree->Branch("Si_E1",  &Si_E1);
 	fTree->Branch("Si_E12", &Si_E12);
 	fTree->Branch("Si_E123",&Si_E123);
 	fTree->Branch("Si_Etot",&Si_Etot);
+	fTree->Branch("Si_Etot_nosat",&Si_Etot_nosat);
 	fTree->Branch("Si_ThetaLab",&Si_ThetaLab);
 
   // SB ---------
@@ -98,12 +100,13 @@ void PhysicsSort::Clear()
     doclear(Si_Sector[i]);
     doclear(Si_Ring[i]);
 		doclear(Si_Saturated[i]);
-		doclear(Si_Mult[i]);
+		Si_Mult[i] = 0;
 	}
 	doclear(Si_E1);
 	doclear(Si_E12);
 	doclear(Si_E123);
 	doclear(Si_Etot);
+	doclear(Si_Etot_nosat);
 	doclear(Si_ThetaLab);
 
   setnan(SB_dE);
@@ -296,10 +299,8 @@ void PhysicsSort::CalculateSi()
 
 		// multiplicity
 		// (store as vector for TTree::Draw matching)
-		Si_Mult[iSi-1]->insert(
-			Si_Mult[iSi-1]->begin(),
-			Si_E[iSi-1]->size(),
-			Si_E[iSi-1]->size());
+		Si_Mult[iSi-1] = Si_E[iSi-1]->size();
+		
 		// saturation
 		// TODO TEMPORARY -->> Need to set better values and not hard code
 		//
@@ -313,22 +314,54 @@ void PhysicsSort::CalculateSi()
 			Si_Saturated[iSi-1]->push_back(saturated);
 		}
 	}
-	
+
+	bool haveSat = false;
 	for(size_t iHit = 0; iHit< Si_E[0]->size(); ++iHit) {
 		Si_E1->push_back(Si_E[0]->at(iHit));
 		Si_Etot->push_back(Si_E[0]->at(iHit));
+		if(Si_Saturated[0]->at(iHit) == 0) {
+			Si_Etot_nosat->push_back(Si_E[0]->at(iHit));
+		} else {
+			haveSat = true;
+		}
 		
 		if(iHit < Si_E[1]->size()) {
 			Si_Etot->back() += Si_E[1]->at(iHit);
 			Si_E12->push_back(Si_E[0]->at(iHit) + Si_E[1]->at(iHit));
+
+			if(!haveSat) {
+				if(Si_Saturated[1]->at(iHit) == 0) {
+					Si_Etot_nosat->back() += Si_E[1]->at(iHit);
+				} else {
+					haveSat = true;
+				}
+			}
+
 
 			if(iHit < Si_E[2]->size()) {
 				Si_Etot->back() += Si_E[2]->at(iHit);
 				Si_E123->push_back(
 					Si_E[0]->at(iHit) + Si_E[1]->at(iHit) + Si_E[2]->at(iHit));
 
+				if(!haveSat) {
+					if(Si_Saturated[2]->at(iHit) == 0) {
+						Si_Etot_nosat->back() += Si_E[2]->at(iHit);
+					} else {
+						haveSat = true;
+					}
+				}
+
+				
 				if(iHit < Si_E[3]->size()) {
 					Si_Etot->back() += Si_E[3]->at(iHit);
+
+					if(!haveSat) {
+						if(Si_Saturated[3]->at(iHit) == 0) {
+							Si_Etot_nosat->back() += Si_E[3]->at(iHit);
+						} else {
+							haveSat = true;
+						}
+					}
 				}
 			}
 		}
