@@ -73,7 +73,7 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
   fTree->Branch("Phoswich_time",&Phoswich_time,"Phoswich_time/D");
 
   // COINC
-  fTree->Branch("TOF_PPAC12",&TOF_PPAC12,"TOF_PAPC12/D");
+  fTree->Branch("TOF_PPAC12",&TOF_PPAC12,"TOF_PPAC12/D");
   fTree->Branch("TOF_PPAC_Phoswich",&TOF_PPAC_Phoswich,"TOF_PPAC_Phoswich/D");
   fTree->Branch("TOF_Si_PPAC",&TOF_Si_PPAC,"TOF_Si_PPAC/D");
   fTree->Branch("TOF_Si_Phoswich",&TOF_Si_Phoswich,"TOF_Si_Phoswich/D");
