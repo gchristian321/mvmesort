@@ -10,3 +10,4 @@ old
 *.root
 libExperiment_mvme_dict.cxx
 mvme_root_event_rdict.cxx
+ede

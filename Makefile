@@ -18,7 +18,7 @@ EXP_LINKDEF = Experiment_mvme_LinkDef.h
 EVENT_OBJECTS_HEADERS = $(current_dir)mvme_root_event_objects.h $(current_dir)mvme_root_event_objects_LinkDef.h
 EVENT_OBJECTS_DEPS = $(current_dir)mvme_root_event_objects.cxx $(EVENT_OBJECTS_HEADERS)
 
-ALL_TARGETS	= libmvme_root_event.so $(EXP_LIB) mvmesort
+ALL_TARGETS	= libmvme_root_event.so $(EXP_LIB) mvmesort ede
 EXTRA_CLEAN =
 
 .DEFAULT_GOAL = all
@@ -47,7 +47,10 @@ mvmesort: mvmesort.cxx $(EXP_LIB) PhysicsSort.o DetectorSort.o
 $< '-Wl,-rpath,$$ORIGIN/:$$ORIGIN/../lib' $(EXP_LINK) \
 -lmvme_root_event $(ROOTLIBS) -o $@
 
+ede: ede.cxx
+	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) -DEXECPATH=\"$(PWD)\" $< $(ROOTLIBS) -o $@
+
 all: $(ALL_TARGETS)
 
 clean:
-	-rm -f $(EXP_LIB) $(EXP_DICT) $(EXTRA_CLEAN) *.so *.o *.pcm *.rootmap mvme_root_event_rdict.cxx mvmesort
+	-rm -f $(EXP_LIB) $(EXP_DICT) $(EXTRA_CLEAN) *.so *.o *.pcm *.rootmap mvme_root_event_rdict.cxx mvmesort ede
