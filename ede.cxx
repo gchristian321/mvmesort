@@ -128,7 +128,7 @@ void calc_ede(const string& particleName,
 	}
 
 	t->SetLineWidth(3);
-	t->SetMarkerStyle(20);
+	t->SetMarkerStyle(6);
 	t->SetLineColor(color);
 	t->SetMarkerColor(color);
 	t->Write();
