@@ -104,9 +104,11 @@ void calc_ede(const string& particleName,
 			de[i] = spl->Eval(enow) * Thick[i];
 			if(de[i] > enow) {
 				de[i] = enow;
+				break;
 			}
 			enow -= de[i];
-			
+		}
+		for(int i=0; i< 4; ++i) {
 			if(thresh.get() && de[i] < thresh->at(i)) {
 				de[i] = 0;
 			}
@@ -114,7 +116,6 @@ void calc_ede(const string& particleName,
 				de[i] = 0;
 				sat[i] = 1;
 			}
-			if(fabs(enow) < 1e-6) break;
 		}
 		etot = accumulate(de.begin(),de.end(),0.);
 		t->Fill();
