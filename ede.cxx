@@ -63,7 +63,7 @@ unique_ptr<TSpline3> read_file(const string& particleName)
 	string header; getline(ifs,header);
 	while(ifs>>v[0]>>v[1]>>v[2]>>v[3]>>v[4]>>v[5]>>v[6]>>v[7]>>v[8]>>v[9]>>v[10]>>v[11]) {
 		e.push_back(v[4] * M); // -->> ATIMA
-		dedx.push_back(v[5] * M);
+		dedx.push_back(v[5]);
 	}
 	if(e.empty() || dedx.empty())
 		bail("Read nothing from file!");
