@@ -47,8 +47,8 @@ mvmesort: mvmesort.cxx $(EXP_LIB) PhysicsSort.o DetectorSort.o
 $< '-Wl,-rpath,$$ORIGIN/:$$ORIGIN/../lib' $(EXP_LINK) \
 -lmvme_root_event $(ROOTLIBS) -o $@
 
-ede: ede.cxx
-	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) -DEXECPATH=\"$(PWD)\" $< $(ROOTLIBS) -o $@
+ede: ede.cxx integrate.h
+	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) -DEXECPATH=\"$(PWD)\" $< $(ROOTLIBS) -lgsl -o $@
 
 all: $(ALL_TARGETS)
 

@@ -10,12 +10,30 @@
 #include <TSpline.h>
 #include <TFile.h>
 #include <TTree.h>
+#include <TGraph.h>
+
+#include "integrate.h"
+
+#include <gsl/gsl_odeiv2.h>
+#include <gsl/gsl_errno.h>
+
 
 using namespace std;
 
 //\todo DEAD LAYERS
 
 namespace {
+
+class LinearSpline {
+	unique_ptr<TGraph> gr_;
+public:
+	LinearSpline(const char*,double* x, double* y, int n):
+		gr_(new TGraph(n,x,y)) { }
+	double Eval(double x) { return gr_->Eval(x); }
+};
+
+typedef TSpline3 Spline_t ;
+//typedef LinearSpline Spline_t ;
 
 const array<double,4> Thick = {
 	500, 1500, 1500, 1500 // Si thicknesses, micron
@@ -34,7 +52,7 @@ const array<string,5> particles = {
 // 	return particleName;
 // }
 
-double get_mass(const string& particleName) {
+inline double get_mass(const string& particleName) {
 	auto it = find(particles.begin(),particles.end(),particleName);
 	if(it == particles.end()) {
 		throw invalid_argument(
@@ -43,7 +61,48 @@ double get_mass(const string& particleName) {
 	return AMU.at(it - particles.begin());
 }
 
-unique_ptr<TSpline3> read_file(const string& particleName)
+auto Eout_func = [] (double t, const double y[], double dydt[], void * params)
+{
+	Spline_t * s = (Spline_t *)params;
+	dydt[0] = -s->Eval(y[0]);
+	return (int)GSL_SUCCESS;
+};
+
+inline double calc_de(
+	double E_in, double thick,
+	const unique_ptr<Spline_t>& spl)
+{
+	// USE GSL ODE Solver for solving equation dE/dx = S(E) for E(x)
+	gsl_odeiv2_system sys = {Eout_func, NULL, 1, spl.get()};
+	gsl_odeiv2_driver * d = gsl_odeiv2_driver_alloc_y_new
+		( &sys, gsl_odeiv2_step_rk4, 1e-6, 1e-6, 0.0);
+	
+	double x0 = 0.; double x1 = thick; // range of ODE integration
+	double y[1] = { E_in };
+	int status;
+	try
+	{
+		status = gsl_odeiv2_driver_apply(d, &x0, x1, y);
+	}
+	catch(std::invalid_argument e)
+	{
+		return 0; // got to the end of the range
+	}
+
+	// check for errors:
+	if( status != GSL_SUCCESS )
+	{
+		throw std::domain_error("GSL RK4 ODE integration failed in calc_de!");
+	}
+
+	gsl_odeiv2_driver_free (d);
+
+	if(y[0] > 0) return E_in - y[0];
+	else return E_in;
+}
+
+inline unique_ptr<Spline_t> read_file(
+	const string& particleName)
 {
 	const string filename =
 		string(EXECPATH) + "/Si_dedx/" +  "dedx_si_" + particleName + ".txt";
@@ -68,12 +127,12 @@ unique_ptr<TSpline3> read_file(const string& particleName)
 	if(e.empty() || dedx.empty())
 		bail("Read nothing from file!");
 
-	return make_unique<TSpline3>(
+	return make_unique<Spline_t>(
 		"edespline",e.data(),dedx.data(),int(e.size()));
 }
 
 void calc_ede(const string& particleName,
-							const unique_ptr<TSpline3>& spl,
+							const unique_ptr<Spline_t>& spl,
 							double elow,
 							double ehigh,
 							const unique_ptr<array<double,4> >& thresh,
@@ -101,7 +160,12 @@ void calc_ede(const string& particleName,
 
 		enow = eion;
 		for(int i=0; i< 4; ++i) {
-			de[i] = spl->Eval(enow) * Thick[i];
+			auto it = find(Thick.begin(),Thick.begin()+i,Thick[i]);
+			if(it != Thick.begin()+i) {
+				de[i] = de.at(it - Thick.begin());
+			} else {
+				de[i] = calc_de(enow, Thick[i], spl); //, 10);
+			}
 			if(de[i] > enow) {
 				de[i] = enow;
 				break;
@@ -202,6 +266,7 @@ int main(int argc, char** argv)
 	};
 	for(auto p : particles) {
 		auto spl = read_file(p);
+		cout << "Calculating energy losses for particle \""<<p<<"\"...\n";
 		calc_ede(
 			p,spl,
 			args.erange[0],
