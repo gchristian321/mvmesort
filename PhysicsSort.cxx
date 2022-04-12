@@ -379,7 +379,7 @@ double PhysicsSort::AddBackDeadLayers(double A, int Z, size_t iHit, int depth)
 	Al.thickness_cm(2*dead_Al/1e4 * cos(theta));
 	p.T = 0;
 	for(int idet = depth; idet >0; --idet) {
-		p.T += get_energy(depth)/A;
+		p.T += get_energy(idet)/A;
 		if(idet > 1) {
 			p.T = catima::energy_in(p,Si);
 			p.T = catima::energy_in(p,Al);
