@@ -138,11 +138,13 @@ void Detector::Clear()
 }
 
 Detector::Detector(const std::string& name, ADCMode adcMode):
-	fName(name), fADCMode(adcMode), fE(0), fT(0), fES(0)
+	fName(name), fADCMode(adcMode),
+	fE(0), fT(0), fES(0), fEraw(0), fTraw(0), fESraw(0)
 {   }
 
 Detector::Detector(const std::string& name, ADCMode adcMode, TTree* tree):
-	fName(name), fADCMode(adcMode), fE(0), fT(0), fES(0)
+	fName(name), fADCMode(adcMode),
+	fE(0), fT(0), fES(0), fEraw(0), fTraw(0), fESraw(0)
 {
 	SetupBranches(tree);
 }
