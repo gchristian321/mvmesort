@@ -47,7 +47,8 @@ private:
   void CalculateCoinc();
   double GetSiTheta(UInt_t ring);
 	UInt_t MatchRingSector(const Hit& hR,	std::vector<Hit>& hitSector);
-  
+	double AddBackDeadLayers(double A, int Z, size_t iHit, int depth);
+	
 private:
   // SI PARAMS
 	// --> Detector Level
@@ -55,15 +56,16 @@ private:
 	std::array<std::vector<double>*, kNumSi> Si_T;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Sector;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Ring;
-	std::array<std::vector<UInt_t>*, kNumSi> Si_Saturated;
 	std::array<Int_t, kNumSi>                Si_Mult;
 	// --> Array Level
 	std::vector<double>* Si_E1;
 	std::vector<double>* Si_E12;
 	std::vector<double>* Si_E123;
 	std::vector<double>* Si_Etot;
-	std::vector<double>* Si_Etot_nosat;
 	std::vector<double>* Si_ThetaLab;
+	std::vector<double>* Si_Etot_p;
+	std::vector<double>* Si_Etot_d;
+	std::vector<double>* Si_Etot_t;
 
   // SB PARAMS
   double SB_dE;

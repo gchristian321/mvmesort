@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include "catima/structures.h"
+#include "catima/catima.h"
 #include "PhysicsSort.h"
 using namespace std;
 
@@ -21,7 +23,6 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 		Si_Sector[i] = 0;
 		Si_Ring[i] = 0;
 		Si_Mult[i] = 0;
-		Si_Saturated[i] = 0;
 		
     int iSi = i+1;
     fTree->Branch(Form("Si%i_E",iSi), &(Si_E[i]));
@@ -32,7 +33,6 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
     } else {
 			Si_Ring[i] = new vector<UInt_t>();
 		}
-		fTree->Branch(Form("Si%i_Saturated",iSi), &(Si_Saturated[i]));
 		fTree->Branch(Form("Si%i_Mult",iSi), &(Si_Mult[i]));
 	}
 	
@@ -40,13 +40,17 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 	Si_E12 = 0;
 	Si_E123 = 0;
 	Si_Etot = 0;
-	Si_Etot_nosat = 0;
+	Si_Etot_p = 0;
+	Si_Etot_d = 0;
+	Si_Etot_t = 0;
 	Si_ThetaLab = 0;
 	fTree->Branch("Si_E1",  &Si_E1);
 	fTree->Branch("Si_E12", &Si_E12);
 	fTree->Branch("Si_E123",&Si_E123);
 	fTree->Branch("Si_Etot",&Si_Etot);
-	fTree->Branch("Si_Etot_nosat",&Si_Etot_nosat);
+	fTree->Branch("Si_Etot_p",&Si_Etot_p);
+	fTree->Branch("Si_Etot_d",&Si_Etot_d);
+	fTree->Branch("Si_Etot_t",&Si_Etot_t);
 	fTree->Branch("Si_ThetaLab",&Si_ThetaLab);
 
   // SB ---------
@@ -99,14 +103,15 @@ void PhysicsSort::Clear()
     doclear(Si_T[i]);
     doclear(Si_Sector[i]);
     doclear(Si_Ring[i]);
-		doclear(Si_Saturated[i]);
 		Si_Mult[i] = 0;
 	}
 	doclear(Si_E1);
 	doclear(Si_E12);
 	doclear(Si_E123);
 	doclear(Si_Etot);
-	doclear(Si_Etot_nosat);
+	doclear(Si_Etot_p);
+	doclear(Si_Etot_d);
+	doclear(Si_Etot_t);
 	doclear(Si_ThetaLab);
 
   setnan(SB_dE);
@@ -197,6 +202,7 @@ vector<PhysicsSort::Hit> PhysicsSort::ExtractHits(
 		string detname = Form("%s%i",detname_base.c_str(),iCh);
 		const Detector& det = fDetectorSort.GetDetectorData(detname);
 
+		const vector<UInt_t>& raw_energies = det.GetRawEnergyHits();
 		const vector<double>& energies = det.GetEnergyHits();
 		const vector<double>& times    = det.GetTimeHits();
 		if(energies.size() != times.size()) {
@@ -212,14 +218,16 @@ vector<PhysicsSort::Hit> PhysicsSort::ExtractHits(
 				GetChannelInfoByDetector(detname).fThreshold;
 		
 			for(size_t iHit=0; iHit< energies.size(); ++iHit) {
-				if(energies.at(iHit) > thresh) {
-
-					vHits.push_back(Hit());
-					Hit& h = vHits.back();
+				if(raw_energies.at(iHit) > 0x1 && 
+					 raw_energies.at(iHit) < 0xffff &&
+					 energies.at(iHit) > thresh)
+				{						 
+					Hit h;
 					h.Ch = iCh;
 					h.E  = energies.at(iHit);
 					h.T  = times.at(iHit);
 					h.ES = includeShort ? det.GetEnergyShortHits().at(iHit) : -sqrt(-1);
+					vHits.emplace_back(h);
 				}
 			}
 		}
@@ -299,77 +307,93 @@ void PhysicsSort::CalculateSi()
 
 		// multiplicity
 		// (store as vector for TTree::Draw matching)
-		Si_Mult[iSi-1] = Si_E[iSi-1]->size();
-		
-		// saturation
-		// TODO TEMPORARY -->> Need to set better values and not hard code
-		//
-		for(const auto& eval : *(Si_E[iSi-1])) {
-			UInt_t saturated = 1;
-			if     (iSi == 1 && eval > 0.3e3 && eval < 11.0e3) saturated = 0;
-			else if(iSi == 2 && eval > 0.8e3 && eval < 22.5e3) saturated = 0;
-			else if(iSi == 3 && eval > 0.2e3 && eval < 45.0e3) saturated = 0;
-			else if(iSi == 4 && eval > 0.3e3 && eval < 17.2e3) saturated = 0;
-
-			Si_Saturated[iSi-1]->push_back(saturated);
-		}
-	}
-
-	bool haveSat = false;
-	for(size_t iHit = 0; iHit< Si_E[0]->size(); ++iHit) {
-		Si_E1->push_back(Si_E[0]->at(iHit));
-		Si_Etot->push_back(Si_E[0]->at(iHit));
-		if(Si_Saturated[0]->at(iHit) == 0) {
-			Si_Etot_nosat->push_back(Si_E[0]->at(iHit));
-		} else {
-			haveSat = true;
-		}
-		
-		if(iHit < Si_E[1]->size()) {
-			Si_Etot->back() += Si_E[1]->at(iHit);
-			Si_E12->push_back(Si_E[0]->at(iHit) + Si_E[1]->at(iHit));
-
-			if(!haveSat) {
-				if(Si_Saturated[1]->at(iHit) == 0) {
-					Si_Etot_nosat->back() += Si_E[1]->at(iHit);
-				} else {
-					haveSat = true;
-				}
-			}
-
-
-			if(iHit < Si_E[2]->size()) {
-				Si_Etot->back() += Si_E[2]->at(iHit);
-				Si_E123->push_back(
-					Si_E[0]->at(iHit) + Si_E[1]->at(iHit) + Si_E[2]->at(iHit));
-
-				if(!haveSat) {
-					if(Si_Saturated[2]->at(iHit) == 0) {
-						Si_Etot_nosat->back() += Si_E[2]->at(iHit);
-					} else {
-						haveSat = true;
-					}
-				}
-
-				
-				if(iHit < Si_E[3]->size()) {
-					Si_Etot->back() += Si_E[3]->at(iHit);
-
-					if(!haveSat) {
-						if(Si_Saturated[3]->at(iHit) == 0) {
-							Si_Etot_nosat->back() += Si_E[3]->at(iHit);
-						} else {
-							haveSat = true;
-						}
-					}
-				}
-			}
-		}
+		Si_Mult[iSi-1] = Si_E[iSi-1]->size();		
 	}
 
 	for( const auto& ringNo : *(Si_Ring[0]) ) {
 		Si_ThetaLab->push_back(GetSiTheta(ringNo));
 	}
+
+	for(size_t iHit = 0; iHit< Si_E[0]->size(); ++iHit) {
+		int depth = 0;
+
+		if(iHit < Si_E[0]->size()) {
+			depth = 1;
+			Si_E1->push_back(Si_E[0]->at(iHit));
+			Si_Etot->push_back(Si_E[0]->at(iHit));
+		
+			if(iHit < Si_E[1]->size()) {
+				depth = 2;
+				Si_Etot->back() += Si_E[1]->at(iHit);
+				Si_E12->push_back(Si_E[0]->at(iHit) + Si_E[1]->at(iHit));
+
+				if(iHit < Si_E[2]->size()) {
+					depth = 3;
+					Si_Etot->back() += Si_E[2]->at(iHit);
+					Si_E123->push_back(
+						Si_E[0]->at(iHit) + Si_E[1]->at(iHit) + Si_E[2]->at(iHit));
+				
+					if(iHit < Si_E[3]->size()) {
+						depth = 4;
+						Si_Etot->back() += Si_E[3]->at(iHit);
+					}
+				}
+			}
+		}
+
+		Si_Etot_p->push_back( AddBackDeadLayers(1.0072765,1,iHit,depth) );
+		Si_Etot_d->push_back( AddBackDeadLayers(2.0135532,1,iHit,depth) );
+		Si_Etot_t->push_back( AddBackDeadLayers(3.0155007,1,iHit,depth) );
+	}
+}
+
+double PhysicsSort::AddBackDeadLayers(double A, int Z, size_t iHit, int depth)
+{
+	const array<double,4> thick = {477,1537,1496,1500};
+	const double dead_Al = 0.3;
+	const double dead_Si = 0.5;
+
+	catima::Projectile p(A,Z);
+	catima::Material Si, Al;
+	Si.add_element(0,14,1);
+	Si.density(2.33);
+	Al.add_element(0,13,1);
+	Al.density(2.7);
+
+	auto get_energy =
+		[&](int idet) {
+			try { return Si_E.at(idet-1)->at(iHit); }
+			catch (exception& e) {
+				cout << "Problem in AddBackDeadLayers::get_energy\n";
+				throw (e);
+			}
+		};
+	double theta;
+	try { theta = Si_ThetaLab->at(iHit); }
+	catch (exception& e) {
+		cerr << "AddBackDeadLayers:: Problem in accessing ThetaLab["<<iHit<<"]\n";
+		throw e;
+	}
+
+	Si.thickness_cm(dead_Si/1e4 * cos(theta));
+	Al.thickness_cm(2*dead_Al/1e4 * cos(theta));
+	p.T = 0;
+	for(int idet = depth; idet >0; --idet) {
+		p.T += get_energy(depth)/A;
+		if(idet > 1) {
+			p.T = catima::energy_in(p,Si);
+			p.T = catima::energy_in(p,Al);
+			p.T = catima::energy_in(p,Si);
+		}
+		else {
+			Al.thickness_cm(dead_Al/1e4 * cos(theta));
+			p.T = catima::energy_in(p,Si);
+			p.T = catima::energy_in(p,Al);
+			break;
+		}
+	}
+
+	return p.T * A;
 }
 
 void PhysicsSort::CalculateSB()

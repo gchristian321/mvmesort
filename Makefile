@@ -5,7 +5,8 @@
 ROOTCFLAGS	=	$(shell root-config --cflags)
 ROOTLIBS	=	$(shell root-config --libs)
 MVMELIBS        =       -L$(PWD)  -lmvme_root_event
-#INCLUDES    =	
+CATIMALIBS      =       -L$(PWD)/../catima/build/lib -lcatima
+INCLUDES    =	-I$(PWD)/../catima/build/include
 
 CXXFLAGS   +=	-std=c++14 -fPIC -O2
 CXXFLAGS   +=   $(INCLUDES)
@@ -45,7 +46,7 @@ DetectorSort.o: DetectorSort.cxx DetectorSort.h
 mvmesort: mvmesort.cxx $(EXP_LIB) PhysicsSort.o DetectorSort.o
 	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) PhysicsSort.o DetectorSort.o \
 $< '-Wl,-rpath,$$ORIGIN/:$$ORIGIN/../lib' $(EXP_LINK) \
--lmvme_root_event $(ROOTLIBS) -o $@
+-lmvme_root_event $(ROOTLIBS) $(CATIMALIBS) -o $@
 
 ede: ede.cxx integrate.h
 	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) -DEXECPATH=\"$(PWD)\" $< $(ROOTLIBS) -lgsl -o $@

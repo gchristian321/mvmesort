@@ -131,6 +131,10 @@ void Detector::Clear()
 	if(fE && fE->size()) fE->clear();
 	if(fT && fT->size()) fT->clear();
 	if(fES && fES->size()) fES->clear();
+
+	if(fEraw && fEraw->size())  fEraw->clear();
+	if(fTraw && fTraw->size())  fTraw->clear();
+	if(fESraw && fESraw->size()) fESraw->clear();
 }
 
 Detector::Detector(const std::string& name, ADCMode adcMode):
@@ -151,10 +155,42 @@ void Detector::SetupBranches(TTree* tree)
 	const Int_t bufsize = 32000;
 	tree->Branch(Form("%s_E", GetName().c_str()), &fE, bufsize);
 	tree->Branch(Form("%s_T", GetName().c_str()), &fT, bufsize);
+	tree->Branch(Form("%s_Eraw", GetName().c_str()), &fEraw, bufsize);
+	tree->Branch(Form("%s_Traw", GetName().c_str()), &fTraw, bufsize);
 	if(fADCMode == kPSD) {
 		tree->Branch(Form("%s_ES", GetName().c_str()), &fES, bufsize);
+		tree->Branch(Form("%s_ESraw", GetName().c_str()), &fESraw, bufsize);
 	}
 }
+
+namespace { inline void add_hit_(
+	UInt_t rawval,
+	vector<double>* ve,
+	vector<UInt_t>* ver,
+	const array<double,3>& Pcal,
+	const string& what)
+{
+	if(!ve || !ver) throw runtime_error("(AddHit) "+what+"(raw) is null");
+	const double cal_value =
+		Pcal[2] * rawval * rawval +	\
+		Pcal[1] * rawval  +				\
+		Pcal[0];  
+	ver->push_back(rawval);
+	ve->push_back(cal_value);
+} }
+
+void Detector::AddEnergyHit(
+	UInt_t eraw, const std::array<double,3>& Pcal)
+{ add_hit_(eraw,fE,fEraw,Pcal,"fE"); }
+
+void Detector::AddTimeHit(
+	UInt_t traw, const std::array<double,3>& Pcal)
+{ add_hit_(traw,fT,fTraw,Pcal,"fT"); }
+
+void Detector::AddEnergyShortHit(
+	UInt_t esraw, const std::array<double,3>& Pcal)
+{ add_hit_(esraw,fES,fESraw,Pcal,"fES"); }
+
 
 DetectorSort::DetectorSort(const string& outFileName,
 													 const string& channelMapFile,
@@ -220,34 +256,27 @@ void DetectorSort::AddData(UInt_t moduleCh,
   const string det_name = chInfo.fDetectorName;
  
 	Detector& detector = GetDetectorData(det_name);
-  auto calibrate = 
-    [&value](const std::array<double,3>& Pcal) {
-			// calibration
-			double cal_value =
-				Pcal[2] * value * value +								\
-				Pcal[1] * value  +											\
-				Pcal[0];  
-			return cal_value;
-    };
+
 	auto check_back_of_string =
     [](const string& s, const string& toFind) {
       if (string(s.substr(s.size() - toFind.size())) == toFind) return true;
       else return false;
     };
-     
+
+	UInt_t valueInt = UInt_t(round(value));
+	
   if(check_back_of_string(storage_name, "amplitude") ||
 		 check_back_of_string(storage_name, "integration_long"))
 	{ 
-		detector.AddEnergyHit(calibrate(chInfo.fEcal));
+		detector.AddEnergyHit(valueInt, chInfo.fEcal);
   }
   else if(check_back_of_string(storage_name, "channel_time"))
 	{ 
-		detector.AddTimeHit(calibrate(chInfo.fTcal));
+		detector.AddTimeHit(valueInt, chInfo.fTcal);
   }
   else if(check_back_of_string(storage_name, "integration_short"))
 	{ 
-		detector.AddEnergyShortHit(calibrate(chInfo.fEScal));
+		detector.AddEnergyShortHit(valueInt, chInfo.fEScal);
   }
-  else { // IGNORE module stuff
-  }
+  else { } // IGNORE module stuff
 }

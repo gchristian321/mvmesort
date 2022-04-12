@@ -48,21 +48,27 @@ public:
 	Detector(const std::string& name, ADCMode type);
 	Detector(const std::string& name, ADCMode type, TTree*);
 	~Detector();
-
+private:
+	template<class T>
+	const std::vector<T>& GetVect(
+		std::vector<T>* pv, const std::string& what) const
+		{
+			if(pv) return *pv;
+			else throw std::runtime_error("(GetHit) "+what+" is null.");
+		}
 public:
-	void AddEnergyHit(double e)
-		{ if(fE) fE->push_back(e); else throw std::runtime_error("(AddHit) fE is null"); }
-	void AddTimeHit(double t)
-		{ if(fT) fT->push_back(t); else throw std::runtime_error("(AddHit) fT is null"); }
-	void AddEnergyShortHit(double es)
-		{ if(fES) fES->push_back(es); else throw std::runtime_error("(AddHit) fES is null"); }
+	void AddEnergyHit(UInt_t eraw, const std::array<double,3>& Pcal);
+	void AddTimeHit(UInt_t traw, const std::array<double,3>& Pcal);
+	void AddEnergyShortHit(UInt_t esraw, const std::array<double,3>& Pcal);
 	
-	const std::vector<double>& GetEnergyHits() const
-		{ if(fE) return *fE; else throw std::runtime_error("(GetHit) fE is null"); }
-	const std::vector<double>& GetTimeHits() const
-		{ if(fT) return *fT; else throw std::runtime_error("(GetHit) fT is null"); }
-	const std::vector<double>& GetEnergyShortHits() const
-		{ if(fES) return *fES; throw std::runtime_error("(GetHit) fES is null");   }
+	const std::vector<double>& GetEnergyHits() const { return GetVect(fE,"fE"); }
+	const std::vector<double>& GetTimeHits() const   { return GetVect(fT,"fT"); }
+	const std::vector<double>& GetEnergyShortHits() const { return GetVect(fES,"fES"); }
+
+	const std::vector<UInt_t>& GetRawEnergyHits() const { return GetVect(fEraw,"fEraw"); }       
+	const std::vector<UInt_t>& GetRawTimeHits() const   { return GetVect(fTraw,"fTraw"); }       
+	const std::vector<UInt_t>& GetRawEnergyShortHits() const { return GetVect(fESraw,"fESraw"); }
+	
 	const std::string& GetName() const { return fName; }
 	
 	void Clear();
@@ -74,6 +80,9 @@ private:
 	std::vector<double>* fE;
 	std::vector<double>* fT;
 	std::vector<double>* fES;
+	std::vector<UInt_t>* fEraw;
+	std::vector<UInt_t>* fTraw;
+	std::vector<UInt_t>* fESraw;
 };
 
 
