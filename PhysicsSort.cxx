@@ -9,6 +9,16 @@
 using namespace std;
 
 
+// some experiment-specific constants
+namespace {
+// M(21Ne), M(p), M(t), M(19Ne) [MeV/c^2]
+const array<double,4> kReactionMasses = {19550.534,938.27203,2808.9210,17695.029};
+const double kBeamEnergy = 840;
+const double kAMU_p = 1.0072765;
+const double kAMU_d = 2.0135532;
+const double kAMU_t = 3.0155007;
+}
+
 PhysicsSort::PhysicsSort(DetectorSort& detsort):
   fDetectorSort(detsort)
 {
@@ -345,14 +355,15 @@ void PhysicsSort::CalculateSi()
 			}
 		}
 
-		Si_Etot_p->push_back( AddBackDeadLayers(1.0072765,1,iHit,depth) );
-		Si_Etot_d->push_back( AddBackDeadLayers(2.0135532,1,iHit,depth) );
-		Si_Etot_t->push_back( AddBackDeadLayers(3.0155007,1,iHit,depth) );
-		Si_Ecm_pt->push_back( CalcEcm(
-														{19550.534,938.27203,2808.9210,17695.029},
-														840.,
-														Si_Ecm_pt->back(),
-														Si_ThetaLab->at(iHit))
+		Si_Etot_p->push_back( AddBackDeadLayers(kAMU_p,1,iHit,depth) );
+		Si_Etot_d->push_back( AddBackDeadLayers(kAMU_d,1,iHit,depth) );
+		Si_Etot_t->push_back( AddBackDeadLayers(kAMU_t,1,iHit,depth) );
+		Si_Ecm_pt->push_back(
+			CalcEcm(kReactionMasses,
+							kBeamEnergy,
+							Si_Etot_t->back(),
+							Si_ThetaLab->at(iHit)
+				)
 			);
 	}
 }
