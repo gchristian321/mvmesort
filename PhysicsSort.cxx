@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include <TLorentzVector.h>
 #include "catima/structures.h"
 #include "catima/catima.h"
 #include "PhysicsSort.h"
@@ -43,6 +44,7 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 	Si_Etot_p = 0;
 	Si_Etot_d = 0;
 	Si_Etot_t = 0;
+	Si_Ecm_pt = 0;
 	Si_ThetaLab = 0;
 	fTree->Branch("Si_E1",  &Si_E1);
 	fTree->Branch("Si_E12", &Si_E12);
@@ -52,6 +54,7 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 	fTree->Branch("Si_Etot_d",&Si_Etot_d);
 	fTree->Branch("Si_Etot_t",&Si_Etot_t);
 	fTree->Branch("Si_ThetaLab",&Si_ThetaLab);
+	fTree->Branch("Si_Ecm_pt",&Si_Ecm_pt);
 
   // SB ---------
   fTree->Branch("SB_dE", &SB_dE, "SB_dE/D");
@@ -112,6 +115,7 @@ void PhysicsSort::Clear()
 	doclear(Si_Etot_p);
 	doclear(Si_Etot_d);
 	doclear(Si_Etot_t);
+	doclear(Si_Ecm_pt);
 	doclear(Si_ThetaLab);
 
   setnan(SB_dE);
@@ -312,8 +316,8 @@ void PhysicsSort::CalculateSi()
 
 	for( const auto& ringNo : *(Si_Ring[0]) ) {
 		Si_ThetaLab->push_back(GetSiTheta(ringNo));
-	}
-
+	}	
+	
 	for(size_t iHit = 0; iHit< Si_E[0]->size(); ++iHit) {
 		int depth = 0;
 
@@ -344,22 +348,45 @@ void PhysicsSort::CalculateSi()
 		Si_Etot_p->push_back( AddBackDeadLayers(1.0072765,1,iHit,depth) );
 		Si_Etot_d->push_back( AddBackDeadLayers(2.0135532,1,iHit,depth) );
 		Si_Etot_t->push_back( AddBackDeadLayers(3.0155007,1,iHit,depth) );
+		Si_Ecm_pt->push_back( CalcEcm(
+														{19550.534,938.27203,2808.9210,17695.029},
+														840.,
+														Si_Ecm_pt->back(),
+														Si_ThetaLab->at(iHit))
+			);
 	}
 }
 
-double PhysicsSort::AddBackDeadLayers(double A, int Z, size_t iHit, int depth)
+double PhysicsSort::CalcEcm(
+	const array<double,4>& M, double ebeam, double elab, double thetalab)
 {
-	const array<double,4> thick = {477,1537,1496,1500};
+	auto ekin2p =
+		[](double ekin, double M)
+			{ return sqrt((ekin+M)*(ekin+M) - M*M); };
+
+	TLorentzVector lv1(0,0,ekin2p(ebeam,M[0]),ebeam+M[0]);
+	TLorentzVector lv2(0,0,0,M[1]);
+	TLorentzVector lv0 = lv1+lv2;
+	
+	const double p3 = ekin2p(elab,M[2]);
+	TLorentzVector lv3(p3*sin(thetalab),0,p3*cos(thetalab),elab+M[2]);
+	TLorentzVector lv4 = lv0 - lv3;
+	return lv4.M() - M[3];
+}
+
+double PhysicsSort::AddBackDeadLayers(
+	double A, int Z, size_t iHit, int depth)
+{
+	const array<double,4> thick = {477,1537,1496,1544};
 	const double dead_Al = 0.3;
 	const double dead_Si = 0.5;
-
+	const double target_thick = 12;
+	
 	catima::Projectile p(A,Z);
-	catima::Material Si, Al;
-	Si.add_element(0,14,1);
-	Si.density(2.33);
-	Al.add_element(0,13,1);
-	Al.density(2.7);
-
+	catima::Material Si  = catima::get_material(14);
+	catima::Material Al  = catima::get_material(13);
+	catima::Material CH2 = catima::get_material(catima::material::CH2);
+	
 	auto get_energy =
 		[&](int idet) {
 			try { return Si_E.at(idet-1)->at(iHit); }
@@ -375,8 +402,14 @@ double PhysicsSort::AddBackDeadLayers(double A, int Z, size_t iHit, int depth)
 		throw e;
 	}
 
-	Si.thickness_cm(dead_Si/1e4 * cos(theta));
-	Al.thickness_cm(2*dead_Al/1e4 * cos(theta));
+	auto set_thickness =
+		[&theta](catima::Material& m, double thick_um) {
+			const double thick_cm = thick_um/1e4;
+			m.thickness_cm(thick_cm/cos(theta));
+		};
+	
+	set_thickness(Si, dead_Si);
+	set_thickness(Al, dead_Al*2);	
 	p.T = 0;
 	for(int idet = depth; idet >0; --idet) {
 		p.T += get_energy(idet)/A;
@@ -386,13 +419,17 @@ double PhysicsSort::AddBackDeadLayers(double A, int Z, size_t iHit, int depth)
 			p.T = catima::energy_in(p,Si);
 		}
 		else {
-			Al.thickness_cm(dead_Al/1e4 * cos(theta));
+			set_thickness(Al, dead_Al);
 			p.T = catima::energy_in(p,Si);
 			p.T = catima::energy_in(p,Al);
 			break;
 		}
 	}
 
+	// half target thickness
+	set_thickness(CH2, 0.5*target_thick);
+	p.T = catima::energy_in(p,CH2);
+	
 	return p.T * A;
 }
 

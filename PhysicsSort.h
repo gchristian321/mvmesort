@@ -48,7 +48,11 @@ private:
   double GetSiTheta(UInt_t ring);
 	UInt_t MatchRingSector(const Hit& hR,	std::vector<Hit>& hitSector);
 	double AddBackDeadLayers(double A, int Z, size_t iHit, int depth);
-	
+	double CalcEcm(const std::array<double,4>& M,
+								 double ebeam,
+								 double elab,
+								 double thetalab);
+
 private:
   // SI PARAMS
 	// --> Detector Level
@@ -66,6 +70,7 @@ private:
 	std::vector<double>* Si_Etot_p;
 	std::vector<double>* Si_Etot_d;
 	std::vector<double>* Si_Etot_t;
+	std::vector<double>* Si_Ecm_pt;
 
   // SB PARAMS
   double SB_dE;
