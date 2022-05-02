@@ -19,7 +19,7 @@ EXP_LINKDEF = Experiment_mvme_LinkDef.h
 EVENT_OBJECTS_HEADERS = $(current_dir)mvme_root_event_objects.h $(current_dir)mvme_root_event_objects_LinkDef.h
 EVENT_OBJECTS_DEPS = $(current_dir)mvme_root_event_objects.cxx $(EVENT_OBJECTS_HEADERS)
 
-ALL_TARGETS	= libmvme_root_event.so $(EXP_LIB) mvmesort ede
+ALL_TARGETS	= libmvme_root_event.so $(EXP_LIB) mvmesort
 EXTRA_CLEAN =
 
 .DEFAULT_GOAL = all
