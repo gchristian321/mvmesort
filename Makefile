@@ -8,7 +8,7 @@ MVMELIBS        =       -L$(PWD)  -lmvme_root_event
 CATIMALIBS      =       -L$(PWD)/../catima/build/lib -lcatima
 INCLUDES    =	-I$(PWD)/../catima/build/include
 
-CXXFLAGS   +=	-std=c++14 -fPIC -O2
+CXXFLAGS   +=	-std=c++14 -fPIC -O2 -DMVMEPATH=\"$(PWD)\"
 CXXFLAGS   +=   $(INCLUDES)
 
 EXP_LIB		= libExperiment_mvme.so

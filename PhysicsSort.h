@@ -45,9 +45,12 @@ private:
   void CalculatePPAC();
   void CalculatePhoswich();
   void CalculateCoinc();
-  double GetSiTheta(UInt_t ring);
+  double GetSiTheta(UInt_t detector, UInt_t ring);
+	std::pair<double,double> GetSiPhiRange(UInt_t detector, UInt_t ring);
 	UInt_t MatchRingSector(const Hit& hR,	std::vector<Hit>& hitSector);
 	double AddBackDeadLayers(double A, int Z, size_t iHit, int depth);
+	std::vector<std::array<Int_t,4> > ConstructSiTrack();
+
 	double CalcEcm(const std::array<double,4>& M,
 								 double ebeam,
 								 double elab,
@@ -67,6 +70,7 @@ private:
 	std::vector<double>* Si_E123;
 	std::vector<double>* Si_Etot;
 	std::vector<double>* Si_ThetaLab;
+	std::vector<double>* Si_PhiLab;
 	std::vector<double>* Si_Etot_p;
 	std::vector<double>* Si_Etot_d;
 	std::vector<double>* Si_Etot_t;

@@ -56,6 +56,7 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 	Si_Etot_t = 0;
 	Si_Ecm_pt = 0;
 	Si_ThetaLab = 0;
+	Si_PhiLab = 0;
 	fTree->Branch("Si_E1",  &Si_E1);
 	fTree->Branch("Si_E12", &Si_E12);
 	fTree->Branch("Si_E123",&Si_E123);
@@ -64,6 +65,7 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 	fTree->Branch("Si_Etot_d",&Si_Etot_d);
 	fTree->Branch("Si_Etot_t",&Si_Etot_t);
 	fTree->Branch("Si_ThetaLab",&Si_ThetaLab);
+	fTree->Branch("Si_PhiLab",&Si_PhiLab);
 	fTree->Branch("Si_Ecm_pt",&Si_Ecm_pt);
 
   // SB ---------
@@ -127,6 +129,7 @@ void PhysicsSort::Clear()
 	doclear(Si_Etot_t);
 	doclear(Si_Ecm_pt);
 	doclear(Si_ThetaLab);
+	doclear(Si_PhiLab);
 
   setnan(SB_dE);
   setnan(SB_E);
@@ -183,14 +186,48 @@ void PhysicsSort::Calculate()
 }
 
 
-double PhysicsSort::GetSiTheta(UInt_t ring)
+pair<double,double> PhysicsSort::GetSiPhiRange(UInt_t detno, UInt_t sector)
 {
-  // TODO --> Use actual values
-  // these are just micron placeholders
-  // (and maybe even wrong at that)
-  const double kDist = 150; // 150 mm 
-  const double rInner = 23.06/2;
-  const double rOuter = 70./2;
+	static map<pair<UInt_t,UInt_t>, pair<double,double> > sectorMap;
+	if(sectorMap.empty()) {
+		TTree t;
+		t.ReadFile( (string(MVMEPATH) + "/sector_angles.dat").c_str() );
+		double philo, phihi;
+		Int_t sector[4];
+		t.SetBranchAddress("philo",&philo);
+		t.SetBranchAddress("phihi",&phihi);
+		for(int i=0; i< 4; ++i) {
+			t.SetBranchAddress(Form("sector%i",i+1),sector+i);
+		}
+		for(long i=0; i< t.GetEntries(); ++i){
+			t.GetEntry(i);
+			sectorMap.emplace(
+				make_pair<UInt_t,UInt_t>(i+1,sector[i]+1),
+				make_pair(philo,phihi)
+				);
+		}
+	}
+
+	auto it = sectorMap.find(make_pair(detno,sector));
+	if(it == sectorMap.end()) {
+		throw invalid_argument(
+			Form("Couldn't find phi mapping for det,sector: %i, %i",
+					 detno, sector)
+			);
+	}
+	
+	return it->second;
+}
+
+double PhysicsSort::GetSiTheta(UInt_t detector, UInt_t ring)
+{
+	// Distances from slack post 2022/04/26, #project-ne21pt
+	// copied from email b.reed -> g.christian 2022/04/05
+  const array<double,4> kDist = {
+		120.72, 133.28, 146.12, 158.68
+	}; // mm
+  const double rInner = 11.53; // mm
+  const double rOuter = 35.;
   const double pitch = (rOuter-rInner)/48;
   double rMid;
   if(ring < 1 || ring > DetectorSort::kRings) {
@@ -202,7 +239,15 @@ double PhysicsSort::GetSiTheta(UInt_t ring)
   else {
     rMid = rInner + pitch*4 + 2*pitch*(ring-1) + pitch/2;
   }
-  return atan(rMid/kDist);
+  try {
+		return atan(rMid/kDist.at(detector-1));
+	}
+	catch (range_error& e) {
+		throw invalid_argument(
+			Form("PhysicsSort::GetSiTheta: Invalid detector no: %i",
+					 detector)
+			);
+	}
 }
 
 vector<PhysicsSort::Hit> PhysicsSort::ExtractHits(
@@ -280,7 +325,43 @@ UInt_t PhysicsSort::MatchRingSector(
 	
 	return sectorMatch;
 }
-				
+
+namespace {
+Int_t match_phi(UInt_t detNo,
+								 const pair<double,double>& phiRange)
+{
+	const vector<UInt_t>& toMatch = Si_Sector.at(detNo-1);
+	vector<Int_t> matches;
+	for(size_t i=0; i< toMatch.size(); ++i) {
+		auto phiRange2 = GetSiPhiRange(detNo,toMatch[i]);
+		double phi2 = 0.5*(phiRange2.first+phiRange2.second);
+		if(phi2 < phiRange.second && phi2 > phiRange.first) {
+			matches.emplace_back(i);
+		}
+	}
+	if(matches.empty()) return -1;
+	else return matches[0];
+	// todo better handling of double matches
+	// right now it's just arbitrary
+}
+}
+
+vector<array<Int_t,4> > PhysicsSort::ConstructSiTrack()
+{
+	vector<array<Int_t,4> > tracks;
+
+	for(size_t iHit = 0; iHit< Si_E[0]->size(); ++iHit) {
+		tracks.push_back({(Int_t)iHit,-1,-1,-1});
+		
+		double theta1 = GetSiTheta(1, Si_Ring[0]->at(iHit));
+		auto phi1 = GetSiPhiRange(1, Si_Sector[0]->at(iHit));
+
+		UInt_t phiMatch2 = match_phi(2,phi1);
+		if(phiMatch2 == -1)
+	}
+	
+	return tracks;
+}
 		
 //// TODO Better Hit Matching ////
 void PhysicsSort::CalculateSi()
@@ -324,9 +405,16 @@ void PhysicsSort::CalculateSi()
 		Si_Mult[iSi-1] = Si_E[iSi-1]->size();		
 	}
 
-	for( const auto& ringNo : *(Si_Ring[0]) ) {
-		Si_ThetaLab->push_back(GetSiTheta(ringNo));
-	}	
+	auto track = ConstructSiTrack();
+
+	const UInt_t kDetTheta = 1;
+	for( const auto& ringNo : *(Si_Ring.at(kDetTheta-1)) ) {
+		Si_ThetaLab->push_back(GetSiTheta(kDetTheta, ringNo));
+	}
+	for( const auto& sectorNo : *(Si_Sector.at(kDetTheta-1)) ) {
+		auto phi = GetSiPhiRange(kDetTheta, sectorNo);
+		Si_PhiLab->push_back(0.5 * (phi.first + phi.second));
+	}
 	
 	for(size_t iHit = 0; iHit< Si_E[0]->size(); ++iHit) {
 		int depth = 0;
