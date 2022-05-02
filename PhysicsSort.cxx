@@ -326,9 +326,10 @@ UInt_t PhysicsSort::MatchRingSector(
 	return sectorMatch;
 }
 
+#if 0
 namespace {
 Int_t match_phi(UInt_t detNo,
-								 const pair<double,double>& phiRange)
+								const pair<double,double>& phiRange)
 {
 	const vector<UInt_t>& toMatch = Si_Sector.at(detNo-1);
 	vector<Int_t> matches;
@@ -345,11 +346,12 @@ Int_t match_phi(UInt_t detNo,
 	// right now it's just arbitrary
 }
 }
+#endif
 
 vector<array<Int_t,4> > PhysicsSort::ConstructSiTrack()
 {
 	vector<array<Int_t,4> > tracks;
-
+#if 0
 	for(size_t iHit = 0; iHit< Si_E[0]->size(); ++iHit) {
 		tracks.push_back({(Int_t)iHit,-1,-1,-1});
 		
@@ -359,7 +361,7 @@ vector<array<Int_t,4> > PhysicsSort::ConstructSiTrack()
 		UInt_t phiMatch2 = match_phi(2,phi1);
 		if(phiMatch2 == -1)
 	}
-	
+#endif	
 	return tracks;
 }
 		
