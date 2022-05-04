@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include <sstream>
 #include <TLorentzVector.h>
 #include "catima/structures.h"
 #include "catima/catima.h"
@@ -188,6 +189,10 @@ void PhysicsSort::Calculate()
 
 pair<double,double> PhysicsSort::GetSiPhiRange(UInt_t detno, UInt_t sector)
 {
+	/// TEMPORARY disabling of this --> problem in reading the mapping file.
+	/// todo: FIX LATER
+	return make_pair<double,double>(-1001,-1001);
+#if 0
 	static map<pair<UInt_t,UInt_t>, pair<double,double> > sectorMap;
 	if(sectorMap.empty()) {
 		TTree t;
@@ -214,13 +219,20 @@ pair<double,double> PhysicsSort::GetSiPhiRange(UInt_t detno, UInt_t sector)
 	
 	auto it = sectorMap.find(make_pair(detno,sector));
 	if(it == sectorMap.end()) {
-		throw invalid_argument(
-			Form("Couldn't find phi mapping for det,sector: %i, %i",
-					 detno, sector)
-			);
+		string err = Form("Couldn't find phi mapping for det,sector: %i, %i",
+											detno, sector);
+		stringstream sstr;
+		sstr << "\nAvailable Mapping (det,sector): (philo, phihi)\n";
+		for(auto& m : sectorMap) {
+			sstr << "(" << m.first.first << "," << m.first.second << "): " <<
+				"(" << m.second.first << ", " << m.second.second << ")\n";
+		}
+		err += sstr.str();
+		throw invalid_argument(err);
 	}
 	
 	return it->second;
+#endif
 }
 
 double PhysicsSort::GetSiTheta(UInt_t detector, UInt_t ring)
