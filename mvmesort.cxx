@@ -34,7 +34,8 @@ int run_mvmesort(const std::string& inputFilename,
 								 double matchWindow,
 								 bool saveRaw,
 								 bool channelMapWarn,
-								 bool doPhysics)
+								 bool doPhysics,
+								 int max_entries)
 {
   // Replay from ROOT file.
   TFile f(inputFilename.c_str(), "read");
@@ -116,7 +117,8 @@ int run_mvmesort(const std::string& inputFilename,
 		
     cout << "Replaying data from tree '" << tree->GetName() << "'..." << std::flush;
 
-    const auto entryCount = tree->GetEntries();
+    Long64_t entryCount = tree->GetEntries();
+		if(max_entries > 0) entryCount = max_entries;
 
     cout << "\nPercent complete: 0... ";
     flush(cout);
@@ -174,9 +176,11 @@ int main(int argc, char** argv)
 			cerr << "usage: mvmesort <input file> <output file> <channel map> [--match-window=<window>] [--no-save-raw] [--no-channel-map-warn]" << endl;
 			cerr << "OPTIONAL ARGUMENTS\n";
 			cerr << "  --match-window=<window> -->> set Si ring + sector energy matching window in MeV (default: DBL_MAX [very large])\n";
-			cerr << "  --no--save-raw -->> disable saving of \"raw\" (detector-level) data to output file (default IS to save)\n";
+			cerr << "  --no-save-raw -->> disable saving of \"raw\" (detector-level) data to output file (default IS to save)\n";
 			cerr << "  --no-channel-map-warn  -->> turn off warnings about problems with the channel map file (default IS to warn)\n";
 			cerr << "  --no-physics -->> turn off \"Physics\" level parameter calculation\n";
+			cerr << "  --max-entries=<entries> -->> restrict number of entries to process\n";
+
 			return 1;
 		};
 
@@ -192,6 +196,7 @@ int main(int argc, char** argv)
 		};
 	
 	bool saveRaw=true, warnChannelMap=true, doPhysics=true;
+	Long64_t max_entries = -1;
 	double matchWindow = -1;
 	for(int i=4; i< argc; ++i) {
 		if(string(argv[i]) == "--no-save-raw") saveRaw = false;
@@ -201,6 +206,10 @@ int main(int argc, char** argv)
 			cout << "Set Si ring+sector energy match window to " << matchWindow << " MeV\n";
 		}
 		else if(string(argv[i]) == "--no-physics") doPhysics = false;
+		else if(check_begin(argv[i],"--max-entries=")) {
+			max_entries = atol(extract_end(argv[i], "--max-entries=").c_str());
+			cout << "Set max entries to proces to " << max_entries << endl;
+		}
 		else {
 			cerr << "\nUnrecognized flag: \"" << argv[i] << "\"\n";
 			return usage();
@@ -209,7 +218,7 @@ int main(int argc, char** argv)
 
 	int err = run_mvmesort(
 		argv[1], argv[2], argv[3],
-		matchWindow, saveRaw, warnChannelMap, doPhysics);
+		matchWindow, saveRaw, warnChannelMap, doPhysics,max_entries);
 	if(!err) { // set output permissions to have group write
 		gSystem->Exec(Form("chmod g+w %s",argv[2]));
 	}
