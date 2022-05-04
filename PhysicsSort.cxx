@@ -208,6 +208,10 @@ pair<double,double> PhysicsSort::GetSiPhiRange(UInt_t detno, UInt_t sector)
 		}
 	}
 
+	if(sector == 0xff) {
+		return make_pair<double,double>(-1001,-1001);
+	}
+	
 	auto it = sectorMap.find(make_pair(detno,sector));
 	if(it == sectorMap.end()) {
 		throw invalid_argument(
