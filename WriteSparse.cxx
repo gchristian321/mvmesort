@@ -39,7 +39,7 @@ void WriteSparse::Clear()
   }
 }
 
-void WriteSparse::AddData(Storage* storage,
+void WriteSparse::AddData(const Storage* storage,
 													UInt_t channel,
 													double paramValue)
 {
