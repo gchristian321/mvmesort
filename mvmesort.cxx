@@ -244,14 +244,12 @@ int write_sparse(const std::string& inputFilename,
     for(int64_t entryIndex = 0; entryIndex < entryCount; entryIndex++) {
 			write_sparse.Clear();
       tree->GetEntry(entryIndex);
-      for(auto& m : event->GetModules()) {
-				for(const auto& storage : m->GetDataStorages()) {
-					for(size_t moduleCh = 0; moduleCh < storage.size; moduleCh++) {
-						double paramValue = storage.ptr[moduleCh];
-						write_sparse.AddData(&storage, moduleCh, paramValue);
-					} // module Ch
-				} // storages
-      } // modules
+			for(const auto& storage : event->GetDataSourceStorages()) {
+				for(size_t moduleCh = 0; moduleCh < storage.size; moduleCh++) {
+					double paramValue = storage.ptr[moduleCh];
+					write_sparse.AddData(&storage, moduleCh, paramValue);
+				} // module Ch
+			} // storages
 			write_sparse.Fill();
 			progress(entryIndex);
     } // entryIndex
