@@ -60,6 +60,7 @@ private:
   // SI PARAMS
 	// --> Detector Level
 	std::array<std::vector<double>*, kNumSi> Si_E;
+	std::vector<double>* Si_E1_Sector;
 	std::array<std::vector<double>*, kNumSi> Si_T;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Sector;
 	std::array<std::vector<UInt_t>*, kNumSi> Si_Ring;

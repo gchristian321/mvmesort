@@ -47,6 +47,8 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
 		}
 		fTree->Branch(Form("Si%i_Mult",iSi), &(Si_Mult[i]));
 	}
+	Si_E1_Sector = 0;
+	fTree->Branch("Si1_E_Sector",&Si_E1_Sector);
 	
 	Si_E1 = 0;
 	Si_E12 = 0;
@@ -121,6 +123,7 @@ void PhysicsSort::Clear()
     doclear(Si_Ring[i]);
 		Si_Mult[i] = 0;
 	}
+	doclear(Si_E1_Sector);
 	doclear(Si_E1);
 	doclear(Si_E12);
 	doclear(Si_E123);
@@ -407,6 +410,12 @@ void PhysicsSort::CalculateSi()
 				Si_Sector[iSi-1]->push_back(
 					MatchRingSector(hR, hitSector));
 			}
+			if(iSi==1) { // temporary Si 1 sector sorting
+				sort(hitSector.begin(), hitSector.end(), minTime);
+				for(const auto& hS : hitSector) {
+					Si_E1_Sector->push_back(hS.E);
+				}				
+			}
 		}
 		else { // sectors only
 			// take earliest hit
@@ -461,16 +470,16 @@ void PhysicsSort::CalculateSi()
 			}
 		}
 
-		Si_Etot_p->push_back( AddBackDeadLayers(kAMU_p,1,iHit,depth) );
-		Si_Etot_d->push_back( AddBackDeadLayers(kAMU_d,1,iHit,depth) );
-		Si_Etot_t->push_back( AddBackDeadLayers(kAMU_t,1,iHit,depth) );
-		Si_Ecm_pt->push_back(
-			CalcEcm(kReactionMasses,
-							kBeamEnergy,
-							Si_Etot_t->back(),
-							Si_ThetaLab->at(iHit)
-				)
-			);
+		// Si_Etot_p->push_back( AddBackDeadLayers(kAMU_p,1,iHit,depth) );
+		// Si_Etot_d->push_back( AddBackDeadLayers(kAMU_d,1,iHit,depth) );
+		// Si_Etot_t->push_back( AddBackDeadLayers(kAMU_t,1,iHit,depth) );
+		// Si_Ecm_pt->push_back(
+		// 	CalcEcm(kReactionMasses,
+		// 					kBeamEnergy,
+		// 					Si_Etot_t->back(),
+		// 					Si_ThetaLab->at(iHit)
+		// 		)
+		// 	);
 	}
 }
 
