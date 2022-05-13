@@ -43,8 +43,11 @@ PhysicsSort.o: PhysicsSort.cxx PhysicsSort.h
 DetectorSort.o: DetectorSort.cxx DetectorSort.h 
 	$(CXX) $(ROOTCFLAGS) $(CXXFLAGS) -c $<
 
-mvmesort: mvmesort.cxx $(EXP_LIB) PhysicsSort.o DetectorSort.o
-	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) PhysicsSort.o DetectorSort.o \
+WriteSparse.o: WriteSparse.cxx WriteSparse.h 
+	$(CXX) $(ROOTCFLAGS) $(CXXFLAGS) -c $<
+
+mvmesort: mvmesort.cxx $(EXP_LIB) PhysicsSort.o DetectorSort.o WriteSparse.o
+	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) PhysicsSort.o DetectorSort.o WriteSparse.o \
 $< '-Wl,-rpath,$$ORIGIN/:$$ORIGIN/../lib' $(EXP_LINK) \
 -lmvme_root_event $(ROOTLIBS) $(CATIMALIBS) -o $@
 
