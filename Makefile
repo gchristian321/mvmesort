@@ -46,7 +46,7 @@ DetectorSort.o: DetectorSort.cxx DetectorSort.h
 WriteSparse.o: WriteSparse.cxx WriteSparse.h 
 	$(CXX) $(ROOTCFLAGS) $(CXXFLAGS) -c $<
 
-mvmesort: mvmesort.cxx $(EXP_LIB) PhysicsSort.o DetectorSort.o WriteSparse.o
+mvmesort: mvmesort.cxx $(EXP_LIB) PhysicsSort.o DetectorSort.o WriteSparse.o ProgressBar.h
 	$(CXX) $(LDFLAGS) $(ROOTCFLAGS) $(CXXFLAGS) PhysicsSort.o DetectorSort.o WriteSparse.o \
 $< '-Wl,-rpath,$$ORIGIN/:$$ORIGIN/../lib' $(EXP_LINK) \
 -lmvme_root_event $(ROOTLIBS) $(CATIMALIBS) -o $@

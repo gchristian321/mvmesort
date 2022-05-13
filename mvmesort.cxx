@@ -21,6 +21,7 @@
 #include "DetectorSort.h"
 #include "PhysicsSort.h"
 #include "WriteSparse.h"
+#include "ProgressBar.h"
 
 using namespace std;
 using MVMERunInfo = std::map<std::string, std::string>;
@@ -238,7 +239,8 @@ int write_sparse(const std::string& inputFilename,
     auto event = exp->GetEvent(eventIndex);
 
 		const auto entryCount = tree->GetEntries();
-    cout << "Replaying data from tree '" << tree->GetName() << "'..." << std::flush;
+    cout << "Replaying data from tree '" << tree->GetName() << "'...\n";
+		ProgressBar progress(entryCount,20);
     for(int64_t entryIndex = 0; entryIndex < entryCount; entryIndex++) {
 			write_sparse.Clear();
       tree->GetEntry(entryIndex);
@@ -251,6 +253,7 @@ int write_sparse(const std::string& inputFilename,
 				} // storages
       } // modules
 			write_sparse.Fill();
+			progress(entryIndex);
     } // entryIndex
     cout << "100\nDone! Processed " << entryCount << " events\n";
   } // treeIndex
