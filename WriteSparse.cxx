@@ -15,16 +15,15 @@ WriteSparse::WriteSparse(MVMEExperiment* experiment, const string& outFileName):
 								Form("Sparse tree for \"%s\"", event->GetName())
 				)
 			);
-		fStorageId.emplace_back(TObjArray());
 		fStorageIdByName.emplace_back(map<std::string,UShort_t>());
 
+		UInt_t sid = 0;
 		for(auto& storage : event->GetDataSourceStorages()) {
-			fStorageIdByName.back().emplace(storage.name, fStorageId.back().GetEntries());
-			fStorageId.back().Add(new TObjString(storage.name.c_str()));
+			fStorageIdByName.back().emplace(storage.name, sid++);
 		}
-		if(fStorageId.back().GetEntries() > 1023) {
+		if(sid > 0x7ff) {
 			throw runtime_error(
-				Form("Too many storages [%i], max is 1023!", fStorageId.back().GetEntries()));
+				Form("Too many storages [%i], max is 0x7ff!", sid));
 		}
 		auto measurement = make_shared<MeasurementType>();
 		measurement->fPackedData = nullptr;
@@ -49,6 +48,9 @@ void WriteSparse::AddData(UInt_t event,
 													double paramValue)
 {
 	if(std::isnan(paramValue)) return;
+	if(storage->name.find("timestamp") < storage->name.size()) return;
+	// ^^ timestamps are larger than 32 bits and need special treatment
+	//    we will not write them, for now
 	
 	UInt_t val = 0;
 	auto it = fStorageIdByName.at(event).find(storage->name);
@@ -57,8 +59,8 @@ void WriteSparse::AddData(UInt_t event,
 	}
 	const UInt_t storageID = it->second;
 	const UInt_t param = UInt_t(paramValue);
-	val = ((channel >> 16) & 0x3f) | val;
-	val = ((storageID >> 22) & 0x3ff) | val;
+	val = (channel << 16) | val;
+	val = (storageID << 21) | val;
 	val = param | val;
 	
 	fPackedData.at(event)->fPackedData->push_back(val);
@@ -68,8 +70,13 @@ void WriteSparse::Write()
 {
 	for(size_t i=0; i< fTrees.size(); ++i) {
 		fTrees.at(i)->Write();
-		fStorageId.at(i).Write(
-		 	Form("%s_StorageID", fTrees.at(i)->GetName())
-			);
+		TObjArray storage(fStorageIdByName.at(i).size());
+		for(const auto& it : fStorageIdByName.at(i)) {
+			storage.AddAt(new TObjString(it.first.c_str()), it.second);
+			//cout << "Adding " << it.second << " : " << it.first << endl;
+		}
+		storage.Write(
+		 	Form("%s_StorageID", fTrees.at(i)->GetName()),
+			TObject::kSingleKey );
 	}
 }

@@ -52,8 +52,6 @@ public:
   void AddData(UInt_t event, const Storage*, UInt_t channel, double paramValue);
   
 private:
-	// std::map<const Storage*, std::shared_ptr<MeasurementType> > fStorageMap;
-	std::vector<TObjArray> fStorageId;
 	std::vector< std::map<std::string, UShort_t> > fStorageIdByName;
   TFile fFile;
 	std::vector<TTree*> fTrees;
