@@ -247,7 +247,7 @@ int write_sparse(const std::string& inputFilename,
 			for(const auto& storage : event->GetDataSourceStorages()) {
 				for(size_t moduleCh = 0; moduleCh < storage.size; moduleCh++) {
 					double paramValue = storage.ptr[moduleCh];
-					write_sparse.AddData(&storage, moduleCh, paramValue);
+					write_sparse.AddData(eventIndex, &storage, moduleCh, paramValue);
 				} // module Ch
 			} // storages
 			write_sparse.Fill();

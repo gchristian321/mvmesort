@@ -1,9 +1,8 @@
 #include <iostream>
-
+#include "TObjString.h"
 #include "WriteSparse.h"
 #include "Experiment_mvme.h"
 using namespace std;
-
 
 
 WriteSparse::WriteSparse(MVMEExperiment* experiment, const string& outFileName):
@@ -16,15 +15,21 @@ WriteSparse::WriteSparse(MVMEExperiment* experiment, const string& outFileName):
 								Form("Sparse tree for \"%s\"", event->GetName())
 				)
 			);
+		fStorageId.emplace_back(TObjArray());
+		fStorageIdByName.emplace_back(map<std::string,UShort_t>());
 
 		for(auto& storage : event->GetDataSourceStorages()) {
-			auto measurement = make_shared<MeasurementType>();
-			measurement->fData = measurement->fChannel = nullptr;
-			fTrees.back()->Branch(storage.name.c_str(), &(measurement->fData));
-			fTrees.back()->Branch(Form("%s_channel",storage.name.c_str()),
-														&(measurement->fChannel));
-			fStorageMap.emplace(&storage, measurement);
-		}	
+			fStorageIdByName.back().emplace(storage.name, fStorageId.back().GetEntries());
+			fStorageId.back().Add(new TObjString(storage.name.c_str()));
+		}
+		if(fStorageId.back().GetEntries() > 1023) {
+			throw runtime_error(
+				Form("Too many storages [%i], max is 1023!", fStorageId.back().GetEntries()));
+		}
+		auto measurement = make_shared<MeasurementType>();
+		measurement->fPackedData = nullptr;
+		fTrees.back()->Branch("packed_data", &(measurement->fPackedData));
+		fPackedData.emplace_back(measurement);
 	}
 }
 
@@ -33,23 +38,38 @@ WriteSparse::~WriteSparse()
 
 void WriteSparse::Clear()
 {
-  for(auto& it : fStorageMap) {
-    it.second->fData->clear();
-		it.second->fChannel->clear();
-  }
+	for(auto& it : fPackedData) {
+		it->fPackedData->clear();
+	}
 }
 
-void WriteSparse::AddData(const Storage* storage,
+void WriteSparse::AddData(UInt_t event,
+													const Storage* storage,
 													UInt_t channel,
 													double paramValue)
 {
 	if(std::isnan(paramValue)) return;
-	auto it = fStorageMap.find(storage);
-	if(it == fStorageMap.end()) {
-		throw invalid_argument(
-			Form("WriteSparse::AddData: Couldn't find storage at %p",storage)
+	
+	UInt_t val = 0;
+	auto it = fStorageIdByName.at(event).find(storage->name);
+	if(it == fStorageIdByName.at(event).end()) {
+		throw invalid_argument(Form("Don't recognize storage: %s", storage->name.c_str()));
+	}
+	const UInt_t storageID = it->second;
+	const UInt_t param = UInt_t(paramValue);
+	val = ((channel >> 16) & 0x3f) | val;
+	val = ((storageID >> 22) & 0x3ff) | val;
+	val = param | val;
+	
+	fPackedData.at(event)->fPackedData->push_back(val);
+}
+
+void WriteSparse::Write()
+{
+	for(size_t i=0; i< fTrees.size(); ++i) {
+		fTrees.at(i)->Write();
+		fStorageId.at(i).Write(
+		 	Form("%s_StorageID", fTrees.at(i)->GetName())
 			);
 	}
-	it->second->fChannel->push_back(channel);
-	it->second->fData->push_back(UInt_t(paramValue));
 }
