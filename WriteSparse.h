@@ -49,10 +49,12 @@ public:
   void Fill()   {	for(auto& t : fTrees) t->Fill(); }
   void Write();
   void CdFile() { fFile.cd(); }
-  void AddData(UInt_t event, const Storage*, UInt_t channel, double paramValue);
+  void AddData(UInt_t event, const std::string& module_name,
+							 const Storage*, UInt_t channel, double paramValue);
   
 private:
-	std::vector< std::map<std::string, UShort_t> > fStorageIdByName;
+	typedef std::map<std::pair<std::string, std::string>, UShort_t> StorageMap_t;
+	std::vector<StorageMap_t> fStorageModuleIdByName;
   TFile fFile;
 	std::vector<TTree*> fTrees;
 	std::vector<std::shared_ptr<MeasurementType> > fPackedData;

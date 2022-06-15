@@ -15,15 +15,20 @@ WriteSparse::WriteSparse(MVMEExperiment* experiment, const string& outFileName):
 								Form("Sparse tree for \"%s\"", event->GetName())
 				)
 			);
-		fStorageIdByName.emplace_back(map<std::string,UShort_t>());
+		fStorageModuleIdByName.emplace_back(StorageMap_t());
 
 		UInt_t sid = 0;
-		for(auto& storage : event->GetDataSourceStorages()) {
-			fStorageIdByName.back().emplace(storage.name, sid++);
-		}
-		if(sid > 0x7ff) {
-			throw runtime_error(
-				Form("Too many storages [%i], max is 0x7ff!", sid));
+		for(auto& module : event->GetModules()) {
+			for(auto& storage : module->GetDataStorages()) {
+				auto names = make_pair<string,string>(
+					module->GetName(), string(storage.name));
+				fStorageModuleIdByName.back().emplace(names, sid++);
+
+				if(sid > 0x7ff) {
+					throw runtime_error(
+						Form("Too many storages [%i], max is 0x7ff!", sid));
+				}
+			}
 		}
 		auto measurement = make_shared<MeasurementType>();
 		measurement->fPackedData = nullptr;
@@ -43,6 +48,7 @@ void WriteSparse::Clear()
 }
 
 void WriteSparse::AddData(UInt_t event,
+													const string& module_name,
 													const Storage* storage,
 													UInt_t channel,
 													double paramValue)
@@ -53,9 +59,12 @@ void WriteSparse::AddData(UInt_t event,
 	//    we will not write them, for now
 	
 	UInt_t val = 0;
-	auto it = fStorageIdByName.at(event).find(storage->name);
-	if(it == fStorageIdByName.at(event).end()) {
-		throw invalid_argument(Form("Don't recognize storage: %s", storage->name.c_str()));
+	auto it = fStorageModuleIdByName.at(event).find(
+		make_pair(module_name, storage->name));
+	if(it == fStorageModuleIdByName.at(event).end()) {
+		throw invalid_argument(
+			Form("Don't recognize module, storage: %s, %s",
+					 module_name.c_str(), storage->name.c_str()));
 	}
 	const UInt_t storageID = it->second;
 	const UInt_t param = UInt_t(paramValue);
@@ -70,13 +79,21 @@ void WriteSparse::Write()
 {
 	for(size_t i=0; i< fTrees.size(); ++i) {
 		fTrees.at(i)->Write();
-		TObjArray storage(fStorageIdByName.at(i).size());
-		for(const auto& it : fStorageIdByName.at(i)) {
-			storage.AddAt(new TObjString(it.first.c_str()), it.second);
-			//cout << "Adding " << it.second << " : " << it.first << endl;
+
+		TObjArray storage(fStorageModuleIdByName.at(i).size());
+		for(const auto& it : fStorageModuleIdByName.at(i)) {
+			storage.AddAt(new TObjString(it.first.second.c_str()), it.second);
 		}
 		storage.Write(
 		 	Form("%s_StorageID", fTrees.at(i)->GetName()),
+			TObject::kSingleKey );
+		
+		TObjArray module(fStorageModuleIdByName.at(i).size());
+		for(const auto& it : fStorageModuleIdByName.at(i)) {
+			module.AddAt(new TObjString(it.first.first.c_str()), it.second);
+		}
+		module.Write(
+		 	Form("%s_ModuleID", fTrees.at(i)->GetName()),
 			TObject::kSingleKey );
 	}
 }
