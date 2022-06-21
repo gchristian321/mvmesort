@@ -18,6 +18,8 @@ const double kBeamEnergy = 840;
 const double kAMU_p = 1.0072765;
 const double kAMU_d = 2.0135532;
 const double kAMU_t = 3.0155007;
+const double kPPAC_Dist = 420;
+const double kX2_Scint_Dist = 100; // just a guess!!
 }
 
 PhysicsSort::PhysicsSort(DetectorSort& detsort):
@@ -84,6 +86,8 @@ PhysicsSort::PhysicsSort(DetectorSort& detsort):
   fTree->Branch("PPAC_T2", PPAC_T+1,"PPAC_T2/D");
   fTree->Branch("PPAC_E1", PPAC_E+0,"PPAC_E1/D");
   fTree->Branch("PPAC_E2", PPAC_E+1,"PPAC_E2/D");
+	fTree->Branch("PPAC_ThetaX", &PPAC_ThetaX, "PPAC_ThetaX/D");
+	fTree->Branch("PPAC_ThetaY", &PPAC_ThetaY, "PPAC_ThetaY/D");
 
   // Phoswich
   fTree->Branch("Phoswich_elong_L", 	&Phoswich_elong_L,      "Phoswich_elong_L/D");      
@@ -144,6 +148,8 @@ void PhysicsSort::Clear()
 		setnan(PPAC_T[i]);
 		setnan(PPAC_E[i]);
 	}
+	setnan(PPAC_ThetaX);
+	setnan(PPAC_ThetaY);
 	
   setnan(Phoswich_elong_L);
   setnan(Phoswich_elong_R);
@@ -152,6 +158,8 @@ void PhysicsSort::Clear()
   setnan(Phoswich_elong);
   setnan(Phoswich_eshort);
   setnan(Phoswich_time);
+	setnan(Phoswich_xpos);
+	setnan(Phoswich_ypos);
 
   setnan(TOF_PPAC12);
   setnan(TOF_PPAC_Phoswich);
@@ -603,6 +611,15 @@ void PhysicsSort::CalculatePPAC()
 			}
 		}
 	}
+
+	if(!isnan(PPAC_X[0]) && !isnan(PPAC_X[1])) {
+		PPAC_ThetaX = atan( (PPAC_X[1] - PPAC_X[0]) / kPPAC_Dist );
+		PPAC_ThetaX *= (180/TMath::Pi());
+	}
+	if(!isnan(PPAC_Y[0]) && !isnan(PPAC_Y[1])) {
+		PPAC_ThetaY = atan( (PPAC_Y[1] - PPAC_Y[0]) / kPPAC_Dist );
+		PPAC_ThetaY *= (180/TMath::Pi());
+	}
 }
 
 void PhysicsSort::CalculatePhoswich()
@@ -624,6 +641,14 @@ void PhysicsSort::CalculatePhoswich()
 		Phoswich_elong = sqrt(iL->E * iR->E);
 		Phoswich_eshort = sqrt(iL->ES * iR->ES);
 		Phoswich_time = 0.5 * (iL->T + iR->T);
+	}
+	if(!isnan(PPAC_ThetaX)) {
+		const double theta_rad = PPAC_ThetaX * TMath::Pi()/180;
+		Phoswich_xpos = kX2_Scint_Dist * tan(theta_rad) + PPAC_X[1];
+	}
+	if(!isnan(PPAC_ThetaY)) {
+		const double theta_rad = PPAC_ThetaY * TMath::Pi()/180;
+		Phoswich_ypos = kX2_Scint_Dist * tan(theta_rad) + PPAC_Y[1];
 	}
 }
 

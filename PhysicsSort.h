@@ -86,6 +86,8 @@ private:
   double PPAC_Y[2];
 	double PPAC_T[2];
 	double PPAC_E[2];
+	double PPAC_ThetaX;
+	double PPAC_ThetaY;
 
   // PHOSWICH
   double Phoswich_elong_L;
@@ -96,7 +98,9 @@ private:
   double Phoswich_time_R;
   double Phoswich_elong;
   double Phoswich_eshort;
-  double Phoswich_time; 
+  double Phoswich_time;
+	double Phoswich_xpos;
+	double Phoswich_ypos;
 
   // COINCIDENCE ----
   double TOF_PPAC12;
